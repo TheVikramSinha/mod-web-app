@@ -45,3 +45,6 @@
  .home-layout>.home-side>.home-section{order:3}
  .home-layout>.home-side>.mini-builds{order:4}
 }
+
+.membership-invite{display:flex;justify-content:space-between;align-items:center;gap:16px;background:#fff7f4;border:1px solid #edd8d3;border-radius:16px;padding:20px;margin-bottom:22px}.membership-invite p{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}.membership-invite .btn{font-size:12px;flex-shrink:0}.membership-invite.joined{font-size:12px}.membership-invite.joined span{display:flex;gap:8px;align-items:center}.home-side>.membership-invite{flex-wrap:wrap}#membership-form>p{margin-bottom:18px}[data-remove-coupon]{min-height:44px}
+@media(max-width:767px){.home-layout>.home-side>.membership-invite{order:2;margin-top:22px;margin-bottom:0}.membership-invite{flex-wrap:wrap}.membership-invite .btn{min-height:44px}}

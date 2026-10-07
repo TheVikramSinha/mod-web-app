@@ -10,11 +10,18 @@ Start the local server from this directory:
 python3 -m http.server 4173 --bind 127.0.0.1
 ```
 
-- [Customer app](http://127.0.0.1:4173/?v=8#home)
-- [Store manager — Downtown Seattle](http://127.0.0.1:4173/?v=8#store/sea/today)
-- [HQ workspace](http://127.0.0.1:4173/?v=8#admin)
+- [Customer app](http://127.0.0.1:4173/?v=9#home)
+- [Store manager — Downtown Seattle](http://127.0.0.1:4173/?v=9#store/sea/today)
+- [HQ workspace](http://127.0.0.1:4173/?v=9#admin)
 
 Refresh an existing tab to load the redesign. The workspace picker offers all six store-manager previews. Resize the browser or use DevTools device mode to try phone and tablet layouts.
+
+## Coupon removal and membership enrollment
+
+- Bag and checkout show **Remove coupon** whenever a code is selected. Removal clears the saved code and recalculates discount, tax and payment due; checkout contact details and bag are preserved. Invalid codes can also be removed directly.
+- **Join MOD Rewards** appears on Home below the main shopping actions, Rewards, More and checkout. The sample form validates name/email, offers optional marketing consent (unchecked), allows cancellation and persists enrollment locally. After joining, these invitations become member-pass shortcuts.
+- This enrollment uses the existing sample customer, points and wallet data without adding a sign-up bonus or resetting the bag. It does not create a live MOD account. Authentication, email verification, account linking and real membership terms remain integration work for a later phase.
+- Browser coverage: `tests/membership-coupons.cjs` checks removal, totals, persistence, form validation/cancel, enrollment, consent, preserved checkout details and mobile/desktop layouts.
 
 ## Latest update: faster ordering and redesigned workspaces
 
@@ -26,18 +33,18 @@ HQ and store-manager interfaces have been redesigned with light navigation, comp
 
 ## Pooja discovery and stakeholder roadmap
 
-- **[Features & roadmap](http://127.0.0.1:4173/?v=8#roadmap):** navigation page separating working features from proposed phases 2, 3 and 4, with audience filters and feature links.
-- **[Group orders](http://127.0.0.1:4173/?v=8#group):** host-paid groups, participant baskets and budgets, readiness, deadlines, named items, one checkout and tracking. Try a sample group to explore immediately.
-- **[Coupon management](http://127.0.0.1:4173/?v=8#admin/coupons):** draft/review/approval, shared or member-issued codes, date/use limits and customer coupon wallet.
-- **[Campaign results](http://127.0.0.1:4173/?v=8#admin/campaign-results):** attributed sample sales, discounts, orders, customers and CSV export.
+- **[Features & roadmap](http://127.0.0.1:4173/?v=9#roadmap):** navigation page separating working features from proposed phases 2, 3 and 4, with audience filters and feature links.
+- **[Group orders](http://127.0.0.1:4173/?v=9#group):** host-paid groups, participant baskets and budgets, readiness, deadlines, named items, one checkout and tracking. Try a sample group to explore immediately.
+- **[Coupon management](http://127.0.0.1:4173/?v=9#admin/coupons):** draft/review/approval, shared or member-issued codes, date/use limits and customer coupon wallet.
+- **[Campaign results](http://127.0.0.1:4173/?v=9#admin/campaign-results):** attributed sample sales, discounts, orders, customers and CSV export.
 
 [Discovery review and complete phase scope](README-MOD-Pizza-Discovery-and-Roadmap.md) explains Pooja's source references, current implementation, sample walkthroughs and remaining proposals. All additions use sample data.
 
 ## Menu and loyalty administration
 
 - **46 menu items, seven categories:** compact category browsing, expanded pizza toppings, salad/kids/cake-pop selections, pickup-only drinks, free extras and store-specific availability.
-- **[HQ loyalty administration](http://127.0.0.1:4173/?v=8#admin/loyalty):** program rules, tier multipliers, reward editor, member audiences/ledgers, recovery approvals and results.
-- **[Store rewards & recovery](http://127.0.0.1:4173/?v=8#store/sea/rewards):** local reward rules and compensation requests that HQ reviews before issuance.
+- **[HQ loyalty administration](http://127.0.0.1:4173/?v=9#admin/loyalty):** program rules, tier multipliers, reward editor, member audiences/ledgers, recovery approvals and results.
+- **[Store rewards & recovery](http://127.0.0.1:4173/?v=9#store/sea/rewards):** local reward rules and compensation requests that HQ reviews before issuance.
 - Rewards and earning rules now feed the working customer checkout. Refunds reconcile points and reward use.
 
 Read [Menu and Ember loyalty comparison](README-MOD-Pizza-Menu-and-Loyalty-Comparison.md) for the implementation, source assumptions, walkthrough and explicit deferrals. The supplied Ember README was comparison material; MOD does not claim all of Ember's capabilities.
