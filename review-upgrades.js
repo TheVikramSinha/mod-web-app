@@ -4,7 +4,7 @@ function pizzaPortions(opts){
 }
 function builderOptions(form){
  const d=new FormData(form),toppings=d.getAll('topping');
- return readHalfOptions(form,{size:d.get('size'),crust:d.get('crust'),sauce:d.get('sauce'),toppings,portions:Object.fromEntries(toppings.map(t=>[t,d.get('portion-'+t)||'Regular']))});
+ return readHalfOptions(form,{size:d.get('size'),crust:d.get('crust'),sauce:d.get('sauce'),saucePlacement:d.get('sauce-placement-'+d.get('sauce'))||'Whole',saucePortion:d.get('sauce-portion-'+d.get('sauce'))||'Regular',placements:Object.fromEntries(toppings.map(t=>[t,d.get('placement-'+t)||'Whole'])),toppings,portions:Object.fromEntries(toppings.map(t=>[t,d.get('portion-'+t)||'Regular']))});
 }
 function updatePizzaLab(){
  const f=document.getElementById('custom-form');if(!f)return;
@@ -12,10 +12,10 @@ function updatePizzaLab(){
  f.querySelectorAll('[data-portion-row]').forEach(el=>el.hidden=!o.toppings.includes(el.dataset.portionRow));
  const dots=o.toppings.flatMap((t,i)=>Array.from({length:o.portions[t]==='Extra'?14:o.portions[t]==='Light'?4:8},(_,j)=>{
  const angle=(j*2.4+i)*2.1,r=22+(j*17+i*11)%64;
- return '<circle cx="'+(100+Math.cos(angle)*r)+'" cy="'+(100+Math.sin(angle)*r)+'" r="5" fill="'+(/mozzarella|cheddar|parmesan|asiago|feta|gorgonzola/i.test(t)?'#fff3bc':/basil|pepper|spinach|arugula/i.test(t)?'#3f773e':/mushroom|olive/i.test(t)?'#796448':colors[i%colors.length])+'"/>';
+ return '<circle cx="'+(o.placements?.[t]==='Left'?100-Math.abs(Math.cos(angle)*r):o.placements?.[t]==='Right'?100+Math.abs(Math.cos(angle)*r):100+Math.cos(angle)*r)+'" cy="'+(100+Math.sin(angle)*r)+'" r="5" fill="'+(/mozzarella|cheddar|parmesan|asiago|feta|gorgonzola/i.test(t)?'#fff3bc':/basil|pepper|spinach|arugula/i.test(t)?'#3f773e':/mushroom|olive/i.test(t)?'#796448':colors[i%colors.length])+'"/>';
  })).join('');
  const preview=f.querySelector('#pizza-lab');
- if(preview)preview.innerHTML='<svg viewBox="0 0 200 200" role="img" aria-label="Illustrative pizza with '+o.toppings.length+' toppings"><circle cx="100" cy="100" r="97" fill="#d9a35b"/><circle cx="100" cy="100" r="85" fill="'+(o.sauce==='No sauce'?'#f4da9a':o.sauce==='White sauce'?'#fff3d5':'#bd402b')+'"/><circle cx="100" cy="100" r="77" fill="#f3d689"/>'+dots+'</svg><p>'+money(unit({id:f.dataset.id,options:o}))+' · '+(550+Object.entries(o.portions).reduce((n,[t,v])=>n+toppingKcal(t,v),0))+' sample kcal</p><small>Illustrative preview · not nutrition advice</small>';
+ if(preview)preview.innerHTML='<svg viewBox="0 0 200 200" role="img" aria-label="Illustrative pizza with '+o.toppings.length+' toppings"><circle cx="100" cy="100" r="97" fill="#d9a35b"/><circle cx="100" cy="100" r="85" fill="'+(o.sauce==='No sauce'?'#f4da9a':o.sauce==='White sauce'?'#fff3d5':'#bd402b')+'"/><circle cx="100" cy="100" r="77" fill="#f3d689"/>'+dots+'</svg><p>'+money(unit({id:f.dataset.id,options:o}))+'</p><small>Illustrative preview · see menu for standard-recipe nutrition</small>';
 }
 function tipControls(){
  const base=Math.max(0,totals().subtotal-totals().merchandiseDiscount);
@@ -47,6 +47,7 @@ document.addEventListener('pointerdown',e=>{if(innerWidth>600||!e.target.closest
 function patchDietMenu(){
  const products=state.menu.filter(p=>(category==='All'||category==='Favorites'&&state.favorites.includes(p.id)||p.category===category)&&dietMatches(p)&&`${p.name} ${p.desc}`.toLowerCase().includes(query.toLowerCase()));
  document.getElementById('products').innerHTML=catalogGroups(products);
+ const filterCount=document.getElementById('diet-filter-count');if(filterCount)filterCount.textContent=dietFilter==='All'?'':'· 1 active';
  document.querySelectorAll('[data-diet]').forEach(b=>{b.classList.toggle('selected',b.dataset.diet===dietFilter);b.setAttribute('aria-pressed',b.dataset.diet===dietFilter);});
 }
 /* Same-browser participant windows publish group changes only, never wallet/profile state. */
