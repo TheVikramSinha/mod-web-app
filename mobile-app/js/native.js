@@ -63,7 +63,7 @@
           <div class="ob-copy"><h2 id="ob-h" tabindex="-1">${esc(s.t)}</h2><p>${esc(s.d)}</p></div>
           <div class="ob-dots" aria-label="Step ${i + 1} of ${SLIDES.length}">${SLIDES.map((_, k) => `<span class="${k === i ? 'on' : ''}"></span>`).join('')}</div>
           <div class="ob-actions">${last
-            ? `<button class="btn btn-primary btn-lg btn-block" data-ob="member">${icon('star')}Sign in (sample member)</button><button class="btn btn-outline btn-lg btn-block" data-ob="guest">Continue as guest</button><p class="tiny muted center">Demo journeys — no real account or password.</p>`
+            ? `<button class="btn btn-primary btn-lg btn-block" data-ob="member">${icon('star')}Sign in with a code</button><button class="btn btn-outline btn-lg btn-block" data-ob="guest">Continue as guest</button><p class="tiny muted center">Passwordless: we email or text you a one-time code.</p>`
             : `<button class="btn btn-primary btn-lg btn-block" data-ob="next">Next ${icon('chevR')}</button>`}</div>`;
         const h = el.querySelector('#ob-h'); if (h) h.focus();
       };
@@ -76,9 +76,9 @@
         const a = b.dataset.ob;
         if (a === 'next') { i++; draw(); return; }
         if (a === 'skip') { i = SLIDES.length - 1; draw(); return; }
-        M.switchJourney(a === 'member' ? 'member' : 'guest');
+        M.switchJourney('guest');
         closeOverlay(el); set('onboarded', true); APP.render();
-        permissions().then(res);
+        permissions().then(() => { if (a === 'member') APP.go('#/login'); res(); });
       });
     });
   }
@@ -96,7 +96,7 @@
   async function permissions() {
     const loc = await ask({ ic: 'pin', title: 'Allow MOD to use your location?', text: 'We’ll pick the nearest store and show accurate pickup and delivery times.', allow: 'Allow while using', deny: 'Don’t allow' });
     set('location', loc);
-    if (loc && !M.S.shared.groupCheckout) { if (!M.S.shared.cart.lines.length) M.applyStore('s1'); U.toast('Nearest store: Capitol Hill, Seattle (simulated)', 'info'); }
+    if (loc && !M.S.shared.groupCheckout) { const g = window.MOD_DATA.SIM_GPS; M.setSearchLoc({ lat: g.lat, lng: g.lng, label: g.label, src: 'gps' }); const n = M.storesNear(g)[0]; if (!M.S.shared.cart.lines.length) M.applyStore(n.store.id); U.toast(`Nearest store: ${n.store.name} · ${M.fmtMiles(n.miles)} (simulated location)`, 'info'); }
     const notif = await ask({ ic: 'mail', title: 'Turn on order updates?', text: 'Get a notification when your order is in the oven, ready, or on its way.', allow: 'Allow', deny: 'Not now' });
     set('notifications', notif);
     APP.render();
@@ -106,6 +106,7 @@
   const seen = {};
   function snapshot() { M.J().orders.forEach(o => { seen[o.id] = M.stageOf(o).id; }); }
   const PUSH = {
+    accepted: ['Order accepted', 'The store has accepted your order.'],
     preparing: ['We’re on it', 'Your order is being prepared.'], baking: ['In the oven 🔥', 'Your pizza is baking now.'],
     out: ['On its way', 'Your courier has picked up your order.'], delivered: ['Delivered', 'Enjoy! Tap to rate your order.'],
     ready: ['Ready for pickup', 'Head to the pickup shelf — your order is waiting.'], completed: ['Picked up', 'Enjoy! Tap to rate your order.'],

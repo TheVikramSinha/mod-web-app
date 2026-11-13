@@ -26,40 +26,46 @@
     deliveryLeadMin: 20,
     closingBufferMin: 30,
     slotDays: 7,
-    slotStepMin: 30,
+    slotStepMin: 15,
     // Simulated order timeline (seconds after start). Compressed for demonstration.
     stages: {
-      delivery: [['received', 0], ['preparing', 90], ['baking', 150], ['out', 210], ['delivered', 330]],
-      pickup: [['received', 0], ['preparing', 90], ['baking', 150], ['ready', 210], ['completed', 330]]
+      delivery: [['received', 0], ['accepted', 45], ['preparing', 90], ['baking', 150], ['out', 210], ['delivered', 330]],
+      pickup: [['received', 0], ['accepted', 45], ['preparing', 90], ['baking', 150], ['ready', 210], ['completed', 330]]
     },
     refundReviewSec: 20,
     tipOptions: [0, 15, 18, 20, 25],
     topUpPresets: [1000, 2500, 5000],
     sampleGiftCard: { code: 'MODGIFT25', amount: 2500 },
     receiptClaim: { code: 'DEMO40', points: 40 },
+    receiptMaxAgeDays: 30,
+    otp: { length: 6, ttlSec: 300, resendSec: 30, maxAttempts: 5 },
+    topUpMin: 500, topUpMax: 50000,
+    pickupMethods: { instore: 'In-store pickup', curbside: 'Curbside pickup', drivethru: 'Drive-thru' },
+    dropoffs: { door: 'Leave at door', hand: 'Hand it to me' },
+    popularDefault: ['p-maddog', 'p-cyo', 'p-garden', 'p-caspian', 'd-garlic', 'x-nonamecake', 's-italian', 'b-lemonade'],
     profileBonus: 100,
     challenge: { id: 'explore3', name: 'Pizza Explorer', need: 3, points: 250 }
   };
 
   const STORES = [
-    { id: 's1', name: 'Capitol Hill', city: 'Seattle, WA', address: '1302 Pine St, Seattle, WA 98101', tz: 'America/Los_Angeles',
+    { id: 's1', lat: 47.6151, lng: -122.3270, name: 'Capitol Hill', city: 'Seattle, WA', address: '1302 Pine St, Seattle, WA 98101', tz: 'America/Los_Angeles',
       open: 540, close: 1440, modes: ['pickup', 'delivery'], deliveryFee: 399, prepMin: 15, priceFactor: 1, accepting: true,
-      outProducts: [], outIngredients: [], pickupNote: 'Pickup shelf is left of the ordering counter. Show your order name or number.' },
-    { id: 's2', name: 'Bellevue Square', city: 'Bellevue, WA', address: '575 Bellevue Sq, Bellevue, WA 98004', tz: 'America/Los_Angeles',
+      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'curbside', 'drivethru'], popular: ['p-maddog', 'p-cyo', 'p-caspian', 'd-garlic', 'x-nonamecake', 'b-lemonade'], pickupNote: 'Pickup shelf is left of the ordering counter. Show your order name or number.' },
+    { id: 's2', lat: 47.6157, lng: -122.2036, name: 'Bellevue Square', city: 'Bellevue, WA', address: '575 Bellevue Sq, Bellevue, WA 98004', tz: 'America/Los_Angeles',
       open: 600, close: 1320, modes: ['pickup', 'delivery'], deliveryFee: 299, prepMin: 20, priceFactor: 1, accepting: true,
-      outProducts: ['p-tristan'], outIngredients: ['artichoke'], pickupNote: 'Mall level 2 food hall. Use the MOD pickup counter by the register.' },
-    { id: 's3', name: 'LoDo', city: 'Denver, CO', address: '1600 Wynkoop St, Denver, CO 80202', tz: 'America/Denver',
+      outProducts: ['p-tristan'], outIngredients: ['artichoke'], pickupMethods: ['instore', 'curbside'], popular: ['p-maddy', 'p-garden', 'p-cyo', 's-caesar', 'x-cakepop', 'b-tea'], pickupNote: 'Mall level 2 food hall. Use the MOD pickup counter by the register.' },
+    { id: 's3', lat: 39.7527, lng: -105.0002, name: 'LoDo', city: 'Denver, CO', address: '1600 Wynkoop St, Denver, CO 80202', tz: 'America/Denver',
       open: 630, close: 1410, modes: ['pickup', 'delivery'], deliveryFee: 349, prepMin: 15, priceFactor: 1.05, accepting: true,
-      outProducts: [], outIngredients: [], pickupNote: 'Walk in and grab your order from the heated pickup rack.' },
-    { id: 's4', name: 'West Loop', city: 'Chicago, IL', address: '1100 W Randolph St, Chicago, IL 60607', tz: 'America/Chicago',
+      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'drivethru'], popular: ['p-dominic', 'p-maddog', 'p-lucy', 'd-cheesy', 'x-cinnamon', 'b-rootbeer'], pickupNote: 'Walk in and grab your order from the heated pickup rack.' },
+    { id: 's4', lat: 41.8843, lng: -87.6551, name: 'West Loop', city: 'Chicago, IL', address: '1100 W Randolph St, Chicago, IL 60607', tz: 'America/Chicago',
       open: 660, close: 1380, modes: ['pickup', 'delivery'], deliveryFee: 449, prepMin: 18, priceFactor: 1.08, accepting: true,
-      outProducts: ['s-greek'], outIngredients: ['bacon'], pickupNote: 'Pickup counter is at the end of the make line.' },
-    { id: 's5', name: 'South Congress', city: 'Austin, TX', address: '1500 S Congress Ave, Austin, TX 78704', tz: 'America/Chicago',
+      outProducts: ['s-greek'], outIngredients: ['bacon'], pickupMethods: ['instore'], popular: ['p-maddog', 'p-caspian', 'p-one', 'd-bites', 'x-nonamecake', 'b-lemonade'], pickupNote: 'Pickup counter is at the end of the make line.' },
+    { id: 's5', lat: 30.2496, lng: -97.7497, name: 'South Congress', city: 'Austin, TX', address: '1500 S Congress Ave, Austin, TX 78704', tz: 'America/Chicago',
       open: 600, close: 1320, modes: ['pickup'], deliveryFee: null, prepMin: 15, priceFactor: 0.98, accepting: true,
-      outProducts: [], outIngredients: [], pickupNote: 'Pickup only at this location. Shelf by the front window.' },
-    { id: 's6', name: 'Union Square', city: 'New York, NY', address: '30 E 14th St, New York, NY 10003', tz: 'America/New_York',
+      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'curbside', 'drivethru'], popular: ['p-garden', 'p-cyo', 'p-lucy', 's-garden', 'x-cookie', 'b-tea'], pickupNote: 'Pickup only at this location. Shelf by the front window.' },
+    { id: 's6', lat: 40.7356, lng: -73.9925, name: 'Union Square', city: 'New York, NY', address: '30 E 14th St, New York, NY 10003', tz: 'America/New_York',
       open: 660, close: 1380, modes: ['pickup', 'delivery'], deliveryFee: 499, prepMin: 20, priceFactor: 1.12, accepting: false,
-      pausedReason: 'Online ordering is paused at this store right now.', outProducts: [], outIngredients: [], pickupNote: 'Pickup at the front counter.' }
+      pausedReason: 'Online ordering is paused at this store right now.', outProducts: [], outIngredients: [], pickupMethods: ['instore'], popular: ['p-maddog', 'p-cyo', 'p-maddy', 'd-garlic', 'x-nonamecake', 'b-water'], pickupNote: 'Pickup at the front counter.' }
   ];
 
   // type: sauce | cheese | meat | veggie | salad | dressing | greens
@@ -240,5 +246,29 @@
       start: D('2026-01-01'), end: D('2027-12-31'), desc: 'Gold members: $15.00 off food on $40+.' }
   ];
 
-  window.MOD_DATA = { CONFIG, STORES, INGREDIENTS, PRODUCTS, CATEGORIES, OFFERS, REWARDS, SALAD_TOPPINGS, PIZZA_TOPPINGS, CHEESES, SAUCES, KIDS_DRINKS, CAKEPOP_FLAVORS };
+  // Sample in-store receipts that can be "scanned" for loyalty credit (prototype only).
+  const SAMPLE_RECEIPTS = [
+    { id: 'RCPT-1302-88417', storeId: 's1', total: 2847, daysAgo: 1, label: 'Capitol Hill · yesterday · $28.47' },
+    { id: 'RCPT-1600-55213', storeId: 's3', total: 1695, daysAgo: 4, label: 'LoDo · 4 days ago · $16.95' },
+    { id: 'RCPT-0575-11904', storeId: 's2', total: 3120, daysAgo: 45, label: 'Bellevue Square · 45 days ago · $31.20 (too old)' }
+  ];
+
+  // Sample ZIP centroids for offline store search (prototype — no live geocoding).
+  const ZIPS = {
+    '98101': [47.6105, -122.3348, 'Seattle, WA'], '98122': [47.6110, -122.3050, 'Seattle, WA'], '98109': [47.6301, -122.3459, 'Seattle, WA'],
+    '98004': [47.6180, -122.2050, 'Bellevue, WA'], '98033': [47.6769, -122.2060, 'Kirkland, WA'], '98052': [47.6787, -122.1240, 'Redmond, WA'],
+    '80202': [39.7530, -104.9990, 'Denver, CO'], '80205': [39.7590, -104.9660, 'Denver, CO'], '80301': [40.0490, -105.2130, 'Boulder, CO'],
+    '60607': [41.8742, -87.6525, 'Chicago, IL'], '60614': [41.9220, -87.6510, 'Chicago, IL'], '60601': [41.8858, -87.6181, 'Chicago, IL'],
+    '78704': [30.2430, -97.7650, 'Austin, TX'], '78701': [30.2711, -97.7437, 'Austin, TX'], '78758': [30.3880, -97.7060, 'Austin, TX'],
+    '10003': [40.7318, -73.9893, 'New York, NY'], '10001': [40.7506, -73.9972, 'New York, NY'], '11201': [40.6943, -73.9903, 'Brooklyn, NY'],
+    '94103': [37.7726, -122.4099, 'San Francisco, CA'], '90012': [34.0614, -118.2385, 'Los Angeles, CA'], '97201': [45.5075, -122.6900, 'Portland, OR'], '02108': [42.3576, -71.0638, 'Boston, MA']
+  };
+  // Approximate region centroids by ZIP prefix, used when a ZIP isn't in the sample table.
+  const ZIP_PREFIX = { '980': [47.6, -122.3, 'Seattle area'], '981': [47.6, -122.3, 'Seattle area'], '802': [39.74, -104.99, 'Denver area'], '803': [40.0, -105.2, 'Boulder area'],
+    '606': [41.88, -87.63, 'Chicago area'], '787': [30.27, -97.74, 'Austin area'], '100': [40.75, -73.99, 'New York area'], '112': [40.65, -73.95, 'Brooklyn area'] };
+  const ZIP_REGION = { '0': [42.36, -71.06, 'New England'], '1': [40.75, -73.99, 'New York region'], '2': [38.90, -77.04, 'Mid-Atlantic'], '3': [33.75, -84.39, 'Southeast'],
+    '4': [39.77, -86.16, 'Great Lakes'], '5': [44.98, -93.27, 'Upper Midwest'], '6': [41.88, -87.63, 'Midwest'], '7': [32.78, -96.80, 'South Central'], '8': [39.74, -104.99, 'Mountain West'], '9': [47.61, -122.33, 'West Coast'] };
+  const SIM_GPS = { lat: 47.6142, lng: -122.3196, label: 'Current location (simulated: Capitol Hill, Seattle)' };
+
+  window.MOD_DATA = { CONFIG, STORES, INGREDIENTS, PRODUCTS, CATEGORIES, OFFERS, REWARDS, SALAD_TOPPINGS, PIZZA_TOPPINGS, CHEESES, SAUCES, KIDS_DRINKS, CAKEPOP_FLAVORS, SAMPLE_RECEIPTS, ZIPS, ZIP_PREFIX, ZIP_REGION, SIM_GPS };
 })();

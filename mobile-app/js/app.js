@@ -52,6 +52,7 @@
       case 'pass': return V.pass();
       case 'account': return V.account();
       case 'join': return V.join();
+      case 'login': return V.login(r.q);
       case 'addresses': return V.addresses();
       case 'favorites': return V.favorites();
       case 'groups': return V.groups();
@@ -60,7 +61,7 @@
       default: return V.notFound();
     }
   }
-  const TITLES = { home: 'Home', menu: 'Menu', item: 'Customize', cart: 'Cart', checkout: 'Checkout', order: 'Order tracking', orders: 'Orders', receipt: 'Receipt', offers: 'Offers', offer: 'Offer', rewards: 'Rewards', activity: 'Activity', wallet: 'Wallet', pass: 'Member pass', account: 'Account', join: 'Join', addresses: 'Addresses', favorites: 'Favorites', groups: 'Group orders', group: 'Group order', support: 'Help' };
+  const TITLES = { home: 'Home', login: 'Sign in', menu: 'Menu', item: 'Customize', cart: 'Cart', checkout: 'Checkout', order: 'Order tracking', orders: 'Orders', receipt: 'Receipt', offers: 'Offers', offer: 'Offer', rewards: 'Rewards', activity: 'Activity', wallet: 'Wallet', pass: 'Member pass', account: 'Account', join: 'Join', addresses: 'Addresses', favorites: 'Favorites', groups: 'Group orders', group: 'Group order', support: 'Help' };
 
   /* ---------------- Chrome ---------------- */
   const APPMODE = !!window.MOD_APP;
@@ -74,7 +75,7 @@
     return `<div class="abar ${a === 'home' ? 'is-home' : ''}">
       <div class="abar-l">${root ? (a === 'home' || pinfo ? `<span class="logo" aria-label="MOD Pizza">${logo()}</span>` : '') : `<button class="abar-back" data-act="nav-back" aria-label="Back">${icon('chevL')}<span class="ios-only">Back</span></button>`}</div>
       <div class="abar-t" aria-hidden="true">${esc(title)}</div>
-      <div class="abar-r">${pinfo ? '' : `<button class="abar-ico" data-act="journey-menu" aria-label="Demo journey: ${M.isMember() ? 'sample member' : 'guest'}">${icon(M.isMember() ? 'star' : 'user')}</button>
+      <div class="abar-r">${pinfo ? '' : `${M.isMember() ? `<button class="abar-ico" data-act="journey-menu" aria-label="Account menu">${icon('star')}</button>` : `<a class="abar-ico" href="#/login" aria-label="Sign in">${icon('user')}</a>`}
         <a class="abar-ico cart" href="#/cart" aria-label="Cart, ${n} item${n === 1 ? '' : 's'}">${icon('cart')}${n ? `<span class="badge" aria-hidden="true">${n}</span>` : ''}</a>`}</div></div>`;
   }
   function cartBar(r) {
@@ -96,7 +97,7 @@
       <nav class="hdr-nav" aria-label="Primary">${nav('#/menu', 'menu', 'Menu')}${nav('#/offers', 'offers', 'Offers')}${nav('#/rewards', 'rewards', 'Rewards')}${nav('#/orders', 'orders', 'Orders')}${nav('#/groups', 'groups', 'Group order')}</nav>
       <button class="ctx-chip" data-act="open-setup" aria-label="Order setup: ${attr(sh.mode)} at ${attr(store.name)}, ${attr(time)}">${icon(sh.mode === 'delivery' ? 'truck' : 'bag')}<span><span class="cc-l1"><strong>${sh.mode === 'delivery' ? 'Delivery' : 'Pickup'}</strong> · ${esc(store.name)}</span><small>${esc(time)}</small></span>${icon('chevD', 'chev')}</button>
       <div class="hdr-right">
-        <button class="journey-chip ${M.isMember() ? 'member' : ''}" data-act="journey-menu" aria-label="Demo journey: ${M.isMember() ? 'sample member' : 'guest'}. Change">${icon(M.isMember() ? 'star' : 'user')}<span>${M.isMember() ? `${M.J().points.toLocaleString()} pts` : 'Guest'}</span></button>
+        ${M.isMember() ? `<button class="journey-chip member" data-act="journey-menu" aria-label="Account menu, ${M.J().points} points">${icon('star')}<span>${M.J().points.toLocaleString()} pts</span></button>` : `<a class="journey-chip" href="#/login">${icon('user')}<span>Sign in</span></a>`}
         <a class="cart-btn" href="#/cart" aria-label="Cart, ${n} item${n === 1 ? '' : 's'}">${icon('cart')}<span class="badge ${n ? '' : 'zero'}" aria-hidden="true">${n}</span></a>
       </div></div>`;
   }
@@ -159,6 +160,10 @@
     updateCountdowns();
   }
   function updateCountdowns() {
+    document.querySelectorAll('.resend[data-until]').forEach(el => {
+      const left = Math.ceil((Number(el.dataset.until) - Date.now()) / 1000); const b = el.closest('button');
+      if (left > 0) { el.textContent = `Resend code in ${left}s`; b.setAttribute('aria-disabled', 'true'); } else { el.textContent = 'Resend code'; b.removeAttribute('aria-disabled'); }
+    });
     document.querySelectorAll('.countdown[data-deadline]').forEach(el => {
       const ms = Number(el.dataset.deadline) - Date.now();
       if (ms <= 0) { el.textContent = 'Selections closed'; return; }
@@ -202,12 +207,61 @@
     return true;
   }
   function journeyDialog() {
-    const cur = M.S.shared.journey;
-    const entry = U.openDialog({ title: 'Demo journey', size: 'sm', body: `<p class="small muted">Switch between a guest and the sample member. This is not real authentication. Your cart and scheduled time stay; coupons, rewards and payment selections reset.</p>
-      <div class="journey-opts">${[['guest', 'Guest', 'Order without joining. Contact details are remembered on this browser.', 'user'], ['member', 'Sample member', `${M.S.journeys.member.points.toLocaleString()} pts · wallet ${money(M.S.journeys.member.wallet.gift)} · ${M.S.journeys.member.enrolled ? 'enrolled' : 'sample profile'}`, 'star']].map(([id, t, s, ic]) =>
-        `<button class="journey-opt ${cur === id ? 'on' : ''}" data-act="journey" data-j="${id}" aria-pressed="${cur === id}">${icon(ic)}<span><strong>${t}</strong><small>${s}</small></span>${cur === id ? icon('check') : ''}</button>`).join('')}</div>
-      ${M.S.shared.groupCheckout ? V.fragments.note('Switching is blocked while a group checkout is locked.', 'warn') : ''}` });
+    const j = M.J(); const p = j.profile;
+    const entry = U.openDialog({ title: 'Account', size: 'sm', body: `<div class="acct-head"><div class="avatar lg" aria-hidden="true">${esc((p.name || 'M').slice(0, 1))}</div><div><strong>${esc(p.name)}</strong><small>${j.points.toLocaleString()} pts · ${esc(M.tierOf(j).name)}</small></div></div>
+      <nav class="mini-links" aria-label="Account">${[['#/rewards', 'star', 'Rewards'], ['#/wallet', 'wallet', `Wallet · ${money(j.wallet.gift)}`], ['#/pass', 'card', 'Member pass'], ['#/orders', 'receipt', 'Orders'], ['#/account', 'user', 'Account settings']].map(([h, ic, t]) => `<a class="mini-link" href="${h}">${icon(ic)}<span><strong>${t}</strong></span>${icon('chevR')}</a>`).join('')}</nav>
+      <button class="btn btn-outline btn-block" style="margin-top:14px" data-act="sign-out">Sign out</button>` });
     return entry;
+  }
+  function cancelDialog(id) {
+    const f = M.findOrder(id); if (!f) return;
+    if (!M.canAmend(f.order)) { U.toast('We’ve started preparing this order — it can’t be canceled. Contact support for help.', 'err'); return; }
+    const reasons = ['Ordered by mistake', 'Need to change items', 'Wrong time or location', 'Taking too long', 'Other'];
+    const entry = U.openDialog({ title: 'Cancel this order?', size: 'sm', body: `<p class="small">${esc(f.order.id)} · ${money(f.order.totals.total)}. You’ll get a full refund to your original payment${f.journey === 'member' ? ', and any points, wallet funds or service credit used will be restored' : ''}. This can’t be undone.</p>
+      <fieldset class="radio-cards"><legend>Reason</legend>${reasons.map((r, i) => `<label class="rcard"><input type="radio" name="cr" value="${esc(r)}" ${i === 0 ? 'checked' : ''}><span>${esc(r)}</span></label>`).join('')}</fieldset>
+      <div class="field" id="cr-other" hidden><label for="cr-note">Tell us more</label><textarea id="cr-note" rows="3" maxlength="300" placeholder="What made you cancel?" aria-describedby="cr-err"></textarea><p class="err" id="cr-err" hidden></p></div>`,
+      footer: '<button class="btn btn-ghost" data-dlg-close>Keep order</button><button class="btn btn-primary" id="co-yes">Cancel order</button>' });
+    const other = entry.dlg.querySelector('#cr-other'), note = entry.dlg.querySelector('#cr-note'), err = entry.dlg.querySelector('#cr-err');
+    entry.dlg.addEventListener('change', (e) => { if (e.target.name !== 'cr') return; const isOther = e.target.value === 'Other'; other.hidden = !isOther; if (isOther) note.focus(); else { err.hidden = true; note.removeAttribute('aria-invalid'); } });
+    entry.dlg.querySelector('#co-yes').addEventListener('click', () => {
+      let reason = (entry.dlg.querySelector('input[name=cr]:checked') || {}).value;
+      if (reason === 'Other') {
+        const t = note.value.trim();
+        if (t.length < 3) { err.textContent = 'Please add a short comment so we know what happened.'; err.hidden = false; note.setAttribute('aria-invalid', 'true'); note.focus(); U.announce(err.textContent, true); return; }
+        reason = `Other: ${t}`;
+      }
+      const r = M.cancelOrder(id, reason); U.closeDialog(entry);
+      if (r.ok) U.toast(`Order ${id} canceled · full refund (simulated)`); else U.toast(r.reason, 'err');
+      render();
+    });
+  }
+  function scanDialog() {
+    if (!M.isMember()) { U.toast('Sign in to earn points from in-store receipts.', 'info'); go('#/login'); return; }
+    const recs = window.MOD_DATA.SAMPLE_RECEIPTS;
+    const body = `<div class="scanner" id="scanner" aria-hidden="true"><div class="scan-frame"><span></span><span></span><span></span><span></span><i class="scan-line"></i></div><p>Line up the barcode at the bottom of your receipt</p></div>
+      <p id="scan-status" class="scan-status" role="status">Camera is simulated in this prototype. Choose a sample receipt to “scan”:</p>
+      <div class="journey-opts" id="scan-opts">${recs.map(r => `<button class="journey-opt" data-scan="${r.id}">${icon('receipt')}<span><strong>${esc(r.id)}</strong><small>${esc(r.label)}</small></span></button>`).join('')}
+        <label class="journey-opt upload">${icon('download')}<span><strong>Upload a receipt photo</strong><small>We’ll read the code from the image (simulated)</small></span><input type="file" accept="image/*" id="scan-file" class="sr-only"></label></div>`;
+    const entry = U.openDialog({ title: 'Scan receipt', size: 'md', body });
+    const status = entry.dlg.querySelector('#scan-status'); const scanner = entry.dlg.querySelector('#scanner');
+    const run = (code) => {
+      scanner.classList.add('busy'); status.className = 'scan-status'; status.textContent = 'Reading receipt…';
+      entry.dlg.querySelectorAll('[data-scan], #scan-file').forEach(b => { b.disabled = true; });
+      setTimeout(() => {
+        scanner.classList.remove('busy');
+        const r = M.claim('scan', code);
+        entry.dlg.querySelectorAll('[data-scan], #scan-file').forEach(b => { b.disabled = false; });
+        if (r.ok) { status.className = 'scan-status ok'; status.textContent = `+${r.points} points added for ${r.receipt.id}.`; U.toast(`+${r.points} pts from your in-store receipt`); render(); }
+        else { status.className = 'scan-status err'; status.textContent = r.reason; }
+      }, 1100);
+    };
+    entry.dlg.addEventListener('click', (e) => { const b = e.target.closest('[data-scan]'); if (b && !b.disabled) run(b.dataset.scan); });
+    entry.dlg.querySelector('#scan-file').addEventListener('change', (e) => {
+      if (!e.target.files.length) return;
+      const claimed = M.J().claims.receipts || [];
+      const pick = recs.find(r => !claimed.includes(r.id) && r.daysAgo <= M.CONFIG.receiptMaxAgeDays) || recs[0];
+      run(pick.id); e.target.value = '';
+    });
   }
   function pdf(o) {
     const lib = window.jspdf && window.jspdf.jsPDF;
@@ -249,6 +303,21 @@
   /* ---------------- Actions ---------------- */
   const ACT = {
     'open-setup': (el) => BLD.openSetup(el.dataset.tab, app),
+    'sign-out': () => {
+      const r = M.signOut(); if (!r.ok) return U.toast(r.reason, 'err');
+      const d = U.topDialog(); if (d) U.closeDialog(d);
+      st.login = null; U.toast('Signed out — you’re browsing as a guest', 'info'); go('#/');
+    },
+    'cancel-order': (el) => cancelDialog(el.dataset.id),
+    'im-here': (el) => { if (M.imHere(el.dataset.id)) U.toast('Thanks! The team knows you’re here.'); },
+    'scan-receipt': () => scanDialog(),
+    'login-channel': (el) => { st.login = Object.assign(st.login || {}, { channel: el.dataset.v, error: '', value: '' }); },
+    'login-sample': () => { st.login = Object.assign(st.login || {}, { channel: 'email', value: M.S.journeys.member.profile.email, error: '' }); setTimeout(() => { const f = main.querySelector('form[data-form=otp-request]'); if (f) f.requestSubmit(); }, 0); },
+    'otp-resend': () => { const o = M.S.shared.otp; if (!o) return; const r = M.requestOtp(o.channel, o.value); st.login.error = r.ok ? '' : r.reason; if (r.ok) U.toast('New code sent (simulated)', 'info'); },
+    'otp-change': () => { M.S.shared.otp = null; M.commit('shared'); st.login.step = 'enter'; st.login.error = ''; },
+    'pickup-method': (el) => { if (!M.setPickupMethod(el.dataset.v)) U.toast('Not available at this store', 'err'); },
+    dropoff: (el) => M.setDropoff(el.dataset.v),
+    'use-next-slot': () => { const d = M.slotsFor(M.curStore(), M.S.shared.mode).find(x => x.slots.length); if (!d) return U.toast('No times available at this store.', 'err'); M.setSchedule('later', d.slots[0]); st.blockers = []; U.toast('Scheduled for ' + M.scheduleText(M.S.shared.schedule, M.curStore())); },
     'nav-back': () => { const a = parseHash().parts[0]; if (st.groupTarget) go(`#/group/${st.groupTarget.g}`); else if (history.length > 1 && window.__navCount > 1) history.back(); else go(a === 'item' ? '#/menu' : '#/'); },
     'journey-menu': () => journeyDialog(),
     mode: (el) => { if (M.S.shared.groupCheckout) return U.toast('Fulfillment is locked during group checkout.', 'err'); if (!M.setMode(el.dataset.mode)) U.toast('Not offered at this store', 'err'); else U.announce(`${el.dataset.mode} selected`); },
@@ -359,7 +428,7 @@
       entry.dlg.querySelector('#gc-yes').addEventListener('click', () => { M.cancelGroup(el.dataset.g); U.closeDialog(entry); U.toast('Group canceled', 'info'); render(); });
     }
   };
-  const NO_RENDER = new Set(['nav-back', 'open-setup', 'journey-menu', 'amend-open', 'chat-open', 'pdf', 'print', 'email-copy', 'topup', 'reset-demo', 'g-note', 'g-window', 'g-copy', 'g-cancel']);
+  const NO_RENDER = new Set(['nav-back', 'sign-out', 'cancel-order', 'scan-receipt', 'login-sample', 'open-setup', 'journey-menu', 'amend-open', 'chat-open', 'pdf', 'print', 'email-copy', 'topup', 'reset-demo', 'g-note', 'g-window', 'g-copy', 'g-cancel']);
 
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-act]'); if (!el) return;
@@ -393,6 +462,7 @@
     if (k === 'menu-search') { st.menu.q = el.value; render(); }
     if (k === 'tip-custom') { const v = Math.max(0, Math.round(parseFloat(el.value || '0') * 100)); M.S.shared.tip = { kind: 'custom', value: 0, custom: isNaN(v) ? 0 : v }; M.persist('shared'); clearTimeout(draftTimer); draftTimer = setTimeout(render, 500); }
     if (k === 'b-note') { const B = BLD.getB(); if (B) B.note = el.value; }
+    if (k === 'otp') { const v = el.value.replace(/\D/g, '').slice(0, M.CONFIG.otp.length); if (v !== el.value) el.value = v; if (v.length === M.CONFIG.otp.length) { const f = el.closest('form'); if (f) f.requestSubmit(); } }
   });
 
   /* ---------------- Forms ---------------- */
@@ -409,8 +479,8 @@
     },
     checkout: (f) => {
       const d = M.S.shared.draft;
-      const vals = { name: f.name.value, email: f.email.value, phone: f.phone.value, address: f.address ? f.address.value : '', instructions: f.instructions ? f.instructions.value : '', allergens: [...f.querySelectorAll('input[name=allergens]:checked')].map(x => x.value), kitchenNote: f.kitchenNote.value };
-      Object.assign(d, vals); M.persist('shared');
+      const vals = { name: f.name.value, email: f.email.value, phone: f.phone.value, address: f.address ? f.address.value : '', instructions: f.instructions ? f.instructions.value : '', allergens: [...f.querySelectorAll('input[name=allergens]:checked')].map(x => x.value), kitchenNote: f.kitchenNote.value, vehicle: f.vehicle ? f.vehicle.value : '' };
+      Object.assign(d, vals); if (vals.vehicle) M.J().profile.vehicle = vals.vehicle.trim(); M.persist();
       const res = M.validateCheckout(vals, { expectedTotal: st.expectedTotal });
       st.fieldErrors = res.fe; st.blockers = res.blockers;
       if (Object.keys(res.fe).length || res.blockers.length) {
@@ -475,7 +545,34 @@
       U.toast(type === 'refund' ? `Refund request ${r.id} sent for review` : `Request ${r.id} sent`);
     },
     feedback: (f) => { const r = f.querySelector('input[name=rating]:checked'); if (!r) { U.toast('Choose a star rating.', 'err'); return; } M.setFeedback(f.dataset.id, Number(r.value), f.comment.value.trim()); U.toast('Thanks for the feedback!'); },
-    'setup-addr': (f) => { BLD.setupSubmitAddress(f); return 'async'; }
+    'setup-addr': (f) => { BLD.setupSubmitAddress(f); return 'async'; },
+    'store-search': (f) => { BLD.storeSearch(f); return 'async'; },
+    'otp-request': (f) => {
+      const L = st.login || (st.login = { channel: 'email' }); L.value = f.id.value.trim();
+      const r = M.requestOtp(L.channel, L.value);
+      if (!r.ok) { L.error = r.reason; render(); focusFirstError(); U.announce(r.reason, true); return 'async'; }
+      L.step = 'code'; L.error = ''; U.announce(`Code sent to ${L.value}`); render(); setTimeout(() => { const i = document.getElementById('otp-in'); if (i) i.focus(); }, 0); return 'async';
+    },
+    'otp-verify': (f) => {
+      const L = st.login; const btn = document.getElementById('otp-submit');
+      if ((f.code.value || '').replace(/\D/g, '').length !== M.CONFIG.otp.length) { L.error = `Enter all ${M.CONFIG.otp.length} digits.`; render(); focusFirstError(); return 'async'; }
+      btn.setAttribute('aria-disabled', 'true'); btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Verifying…';
+      setTimeout(() => {
+        const r = M.verifyOtp(f.code.value);
+        if (!r.ok) { L.error = r.reason; if (r.expired || r.locked) { M.S.shared.otp = null; M.commit('shared'); L.step = 'enter'; } render(); focusFirstError(); U.announce(r.reason, true); return; }
+        const join = parseHash().q.join; st.login = null;
+        if (!r.known || join) {
+          const m = M.J(); st.joinDraft = { name: m.enrolled ? m.profile.name : '', email: r.ident.channel === 'email' ? r.ident.value : '', marketing: false };
+          U.toast('Code verified — finish your profile to join MOD Rewards'); go('#/join');
+        } else { U.toast(`Welcome back, ${M.J().profile.name.split(' ')[0]}!`); go('#/'); }
+      }, 700);
+      return 'async';
+    },
+    'topup-custom': (f) => {
+      const v = Math.round(parseFloat(f.amount.value) * 100); const C = M.CONFIG;
+      if (!v || isNaN(v) || v < C.topUpMin || v > C.topUpMax) { f.amount.setAttribute('aria-invalid', 'true'); U.toast(`Enter an amount between ${money(C.topUpMin)} and ${money(C.topUpMax)}.`, 'err'); f.amount.focus(); return 'async'; }
+      ACT.topup({ dataset: { amt: String(v) } }); f.reset(); return 'async';
+    }
   };
   document.addEventListener('submit', (e) => {
     const f = e.target; const k = f.dataset.form; if (!k || !FORMS[k]) return;

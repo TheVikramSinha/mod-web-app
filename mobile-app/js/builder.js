@@ -329,55 +329,92 @@
   }
 
   /* ================= Order setup dialog ================= */
-  let setupEntry = null; const setupState = { day: 0, addAddr: false };
+  let setupEntry = null; const setupState = { day: 0, addAddr: false, searchErr: '', zip: '' };
   function setupBody() {
     const sh = M.S.shared, store = M.curStore(), j = M.J();
     const status = M.storeStatus(store, sh.mode);
     const days = M.slotsFor(store, sh.mode);
     const day = days[setupState.day] || days[0];
     const locked = !!sh.groupCheckout;
-    const storeCard = (s) => {
+    const loc = sh.searchLoc;
+    const list = loc ? M.storesNear(loc).map((x, i) => Object.assign(x, { rank: i })) : D.STORES.map(s => ({ store: s, miles: null, rank: -1 }));
+    const storeCard = (s, miles, rank) => {
       const ss = M.storeStatus(s, sh.mode); const lt = M.fmtTime(Date.now(), s.tz);
       return `<label class="store-opt ${s.id === store.id ? 'on' : ''} ${!s.accepting ? 'paused' : ''}"><input type="radio" name="store" value="${s.id}" ${s.id === store.id ? 'checked' : ''} data-act="setup-store" data-id="${s.id}" ${locked ? 'disabled' : ''}>
-        <div><span class="so-name"><strong>${esc(s.name)}</strong> <span class="muted">· ${esc(s.city)}</span></span><small>${esc(s.address)}</small>
+        <div><span class="so-name"><strong>${esc(s.name)}</strong> <span class="muted">· ${esc(s.city)}</span>${miles != null ? `<span class="dist ${rank === 0 ? 'near' : ''}">${rank === 0 ? 'Nearest · ' : ''}${esc(M.fmtMiles(miles))}</span>` : ''}</span><small>${esc(s.address)}</small>
           <small>${icon('clock')}${esc(M.hoursText(s))} store time · now ${esc(lt)}</small>
           <span class="store-tags">${s.modes.map(m => V.fragments.pill(m === 'pickup' ? 'Pickup' : `Delivery ${money(s.deliveryFee)}`, '')).join('')}${!s.modes.includes('delivery') ? V.fragments.pill('No delivery', 'pill-muted') : ''}${V.fragments.pill(`~${s.prepMin} min prep`, 'pill-muted')}
           ${!s.accepting ? V.fragments.pill('Not accepting orders', 'pill-warn') : !ss.ok ? V.fragments.pill(esc(ss.reason), 'pill-warn') : ss.asap ? V.fragments.pill('Open for ASAP', 'pill-ok') : V.fragments.pill('Scheduled only', 'pill-warn')}</span></div></label>`;
     };
     return `${locked ? V.fragments.note('Store, fulfillment and time are locked during group checkout.', 'warn') : ''}
       <div class="seg full" role="radiogroup" aria-label="Fulfillment">${['pickup', 'delivery'].map(m => `<button type="button" role="radio" aria-checked="${sh.mode === m}" class="seg-btn ${sh.mode === m ? 'on' : ''}" data-act="setup-mode" data-mode="${m}" ${!store.modes.includes(m) || locked ? 'disabled' : ''}>${icon(m === 'pickup' ? 'bag' : 'truck')}${m === 'pickup' ? 'Pickup' : 'Delivery'}${!store.modes.includes(m) ? ' · unavailable here' : ''}</button>`).join('')}</div>
-      <section class="setup-sect" id="setup-store"><h3>Store</h3><div class="store-list">${D.STORES.map(storeCard).join('')}</div></section>
+      <section class="setup-sect" id="setup-store"><h3>Store</h3>
+        <div class="store-search"><form data-form="store-search" class="inline-form" novalidate><label for="ss-zip" class="sr-only">ZIP code</label><input id="ss-zip" name="zip" inputmode="numeric" maxlength="5" placeholder="Search by ZIP code" value="${attr(setupState.zip)}" autocomplete="postal-code" ${setupState.searchErr ? 'aria-invalid="true" aria-describedby="ss-err"' : ''}><button class="btn btn-ink" type="submit">${icon('search')}Search</button></form>
+          <button type="button" class="btn btn-outline btn-block gps-btn" data-act="setup-gps" ${locked ? 'disabled' : ''}>${icon('target')}Use my current location</button>
+          ${setupState.searchErr ? `<p class="err" id="ss-err" role="alert">${esc(setupState.searchErr)}</p>` : ''}
+          ${loc ? `<p class="near-label" role="status">${icon('pin')}<span>Nearest to <strong>${esc(loc.label)}</strong></span><button type="button" class="link-btn" data-act="setup-clear-loc">Clear</button></p>` : ''}</div>
+        <div class="store-list">${list.map(x => storeCard(x.store, x.miles, x.rank)).join('')}</div>
+        ${loc && list[0] && list[0].miles > 100 ? `<p class="small warn-text">${icon('info')}No MOD stores within 100 miles — showing the closest ones.</p>` : ''}</section>
       ${sh.mode === 'delivery' ? `<section class="setup-sect" id="setup-address"><h3>Delivery address</h3>
         ${j.addresses.length ? `<div class="addr-opts">${j.addresses.map(a => `<label class="rcard ${a.id === j.selectedAddressId ? 'on' : ''}"><input type="radio" name="addr" ${a.id === j.selectedAddressId ? 'checked' : ''} data-act="setup-addr" data-id="${a.id}"><span><strong>${esc(a.label)}</strong><small>${esc(a.line)}</small>${a.instructions ? `<small class="muted">${esc(a.instructions)}</small>` : ''}</span></label>`).join('')}</div>` : '<p class="small muted">No saved address yet.</p>'}
         ${setupState.addAddr ? `<form class="card subtle" data-form="setup-addr" novalidate><div class="fgrid two"><div class="field"><label for="sa-label">Name</label><input id="sa-label" name="label" placeholder="Home"></div><div class="field"><label for="sa-line">Address</label><input id="sa-line" name="line" autocomplete="street-address" required></div></div>
           <div class="field"><label for="sa-ins">Instructions <span class="opt">optional</span></label><input id="sa-ins" name="instructions"></div><p class="err" id="sa-err" hidden></p><div class="btn-row"><button class="btn btn-sm btn-primary" type="submit">Save address</button><button class="btn btn-sm btn-ghost" type="button" data-act="setup-addr-toggle">Cancel</button></div></form>`
           : `<div class="btn-row"><button class="btn btn-sm btn-outline" data-act="setup-addr-toggle">${icon('plus')}New address</button><a class="btn btn-sm btn-ghost" href="#/addresses" data-dlg-close>Manage addresses</a></div>`}
-      </section>` : `<section class="setup-sect"><div class="pickup-note">${icon('info')}<span><strong>${esc(store.name)} pickup:</strong> ${esc(store.pickupNote)}</span></div></section>`}
+        <fieldset class="opt-fs"><legend>Drop-off</legend><div class="method-grid two">${Object.entries(M.CONFIG.dropoffs).map(([k, l]) => `<label class="method ${sh.dropoff === k ? 'on' : ''}"><input type="radio" name="sdrop" ${sh.dropoff === k ? 'checked' : ''} data-act="setup-dropoff" data-v="${k}">${icon(k === 'door' ? 'home' : 'user')}<span><strong>${l}</strong></span></label>`).join('')}</div></fieldset>
+      </section>` : `<section class="setup-sect" id="setup-pickup">${V.pickupMethodPicker(store, sh.pickupMethod, locked).replace(/data-act="pickup-method"/g, 'data-act="setup-pickup"')}<div class="pickup-note">${icon('info')}<span>${esc(V.pickupNote(store, sh.pickupMethod))}</span></div></section>`}
       <section class="setup-sect" id="setup-time"><h3>When <small class="muted">· ${esc(store.tz.replace('_', ' '))} store time</small></h3>
         <div class="seg full" role="radiogroup" aria-label="Timing"><button type="button" role="radio" aria-checked="${sh.schedule.type === 'asap'}" class="seg-btn ${sh.schedule.type === 'asap' ? 'on' : ''}" data-act="setup-asap" ${!status.asap || locked ? 'disabled' : ''}>ASAP${status.asap ? ` · ~${M.leadMin(store, sh.mode)} min` : ' · unavailable now'}</button><button type="button" role="radio" aria-checked="${sh.schedule.type === 'later'}" class="seg-btn ${sh.schedule.type === 'later' ? 'on' : ''}" data-act="setup-later" ${locked ? 'disabled' : ''}>Later</button></div>
         ${!status.asap && status.ok ? `<p class="small warn-text">${esc(status.reason)}</p>` : ''}
-        ${sh.schedule.type === 'later' || !status.asap ? (days.length ? `<div class="day-tabs" role="tablist" aria-label="Day">${days.map((d, i) => `<button type="button" role="tab" aria-selected="${i === setupState.day}" class="day-tab ${i === setupState.day ? 'on' : ''}" data-act="setup-day" data-i="${i}" ${locked ? 'disabled' : ''}>${esc(d.label)}<small>${d.slots.length} times</small></button>`).join('')}</div>
-          ${day && day.slots.length ? `<div class="slot-grid" role="radiogroup" aria-label="Time slots for ${attr(day.label)}">${day.slots.map(s => `<button type="button" role="radio" aria-checked="${sh.schedule.slot === s}" class="slot ${sh.schedule.slot === s ? 'on' : ''}" data-act="setup-slot" data-t="${s}" ${locked ? 'disabled' : ''}>${esc(M.fmtTime(s, store.tz, { tzName: false }))}</button>`).join('')}</div>` : '<p class="small muted">No times left this day.</p>'}`
+        ${sh.schedule.type === 'later' || !status.asap ? (days.length ? `${nextBtn(days, store, sh, locked)}<div class="day-tabs" role="tablist" aria-label="Day">${days.map((d, i) => `<button type="button" role="tab" aria-selected="${i === setupState.day}" class="day-tab ${i === setupState.day ? 'on' : ''}" data-act="setup-day" data-i="${i}" ${locked || !d.slots.length ? 'disabled' : ''}>${esc(d.label)}<small>${d.slots.length ? d.slots.length + ' times' : 'Full / closed'}</small></button>`).join('')}</div>
+          ${day && day.slots.length ? slotGroups(day, store, sh, locked) : '<p class="small muted">No times left this day — pick another day.</p>'}
+          <p class="tiny muted">15-minute windows in store time. We hold your time until checkout and recheck it when you pay. Use arrow keys to move between times.</p>`
           : '<p class="small muted">This store isn’t taking orders.</p>') : ''}
       </section>`;
   }
+  function nextBtn(days, store, sh, locked) {
+    const d = days.find(x => x.slots.length); if (!d) return '';
+    const t = d.slots[0]; const on = sh.schedule.slot === t;
+    return `<button type="button" class="next-slot ${on ? 'on' : ''}" data-act="setup-slot" data-t="${t}" ${locked ? 'disabled' : ''}>${icon('clock')}<span><strong>Next available</strong><small>${esc(d.label)} · ${esc(M.fmtTime(t, store.tz, { tzName: false }))}</small></span>${on ? icon('check') : ''}</button>`;
+  }
+  function slotGroups(day, store, sh, locked) {
+    const parts = [['Morning', 0, 12], ['Afternoon', 12, 17], ['Evening', 17, 24]];
+    const hourOf = (t) => M.tzParts(t, store.tz).h;
+    const sel = sh.schedule.slot;
+    const focusT = day.slots.includes(sel) ? sel : day.slots[0];
+    return `<div class="slot-wrap" role="radiogroup" aria-label="Time slots for ${attr(day.label)}">${parts.map(([name, a, b]) => {
+      const ss = day.slots.filter(t => hourOf(t) >= a && hourOf(t) < b); if (!ss.length) return '';
+      return `<div class="slot-part"><h4>${name}</h4><div class="slot-grid">${ss.map(t => { const end = t + M.CONFIG.slotStepMin * 60000;
+        return `<button type="button" role="radio" aria-checked="${sel === t}" tabindex="${t === focusT ? 0 : -1}" class="slot ${sel === t ? 'on' : ''}" data-act="setup-slot" data-t="${t}" ${locked ? 'disabled' : ''} aria-label="${attr(M.fmtTime(t, store.tz, { tzName: false }))} to ${attr(M.fmtTime(end, store.tz, { tzName: false }))}">${esc(M.fmtTime(t, store.tz, { tzName: false }))}<small>–${esc(M.fmtTime(end, store.tz, { tzName: false }).replace(/\s?[AP]M/, ''))}</small></button>`; }).join('')}</div></div>`;
+    }).join('')}</div>`;
+  }
+  // Arrow-key navigation across time slots (roving focus).
+  document.addEventListener('keydown', (e) => {
+    const el = e.target; if (!el.classList || !el.classList.contains('slot')) return;
+    const all = [...document.querySelectorAll('#setup-body .slot')]; const i = all.indexOf(el); if (i < 0) return;
+    const grid = el.parentElement; const cols = Math.max(1, Math.round(grid.clientWidth / el.offsetWidth));
+    const map = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols, Home: -i, End: all.length - 1 - i };
+    if (!(e.key in map)) return; e.preventDefault();
+    const n = all[Math.max(0, Math.min(all.length - 1, i + map[e.key]))]; all.forEach(x => x.tabIndex = -1); n.tabIndex = 0; n.focus();
+  });
   function openSetup(tab, app) {
     const sh = M.S.shared;
     if (sh.schedule.type === 'later' && sh.schedule.slot) {
       const days = M.slotsFor(M.curStore(), sh.mode); const i = days.findIndex(d => d.slots.includes(sh.schedule.slot)); setupState.day = Math.max(0, i);
     } else setupState.day = 0;
     setupState.addAddr = false;
+    if (setupState.timer) clearInterval(setupState.timer);
+    setupState.timer = setInterval(() => { if (!setupEntry) { clearInterval(setupState.timer); return; } const sh2 = M.S.shared; if (sh2.schedule.type === 'later' && !M.slotValid(M.curStore(), sh2.mode, sh2.schedule.slot)) { M.setSchedule('asap'); U.toast('Your selected time passed — choose a new one.', 'info'); } refreshSetup(); }, 30000);
     setupEntry = U.openDialog({ title: 'Order setup', size: 'lg', id: 'setup-dlg', body: `<div id="setup-body">${setupBody()}</div>`,
       footer: '<button class="btn btn-primary btn-block" data-dlg-close>Done</button>', onClose: () => { setupEntry = null; app.render(); } });
     if (tab) { const t = document.getElementById('setup-' + tab); if (t) setTimeout(() => t.scrollIntoView({ block: 'start', behavior: U.reduceMotion() ? 'auto' : 'smooth' }), 60); }
   }
   function refreshSetup() {
     const b = document.getElementById('setup-body'); if (!b) return;
-    const ae = document.activeElement; const key = ae && ae.dataset ? JSON.stringify([ae.dataset.act, ae.dataset.id, ae.dataset.mode, ae.dataset.t, ae.dataset.i]) : null;
+    const ae = document.activeElement; const key = ae && ae.dataset ? JSON.stringify([ae.dataset.act, ae.dataset.id, ae.dataset.mode, ae.dataset.t, ae.dataset.i, ae.dataset.v]) : null;
     const sc = b.closest('.dlg-body').scrollTop;
     b.innerHTML = setupBody();
     b.closest('.dlg-body').scrollTop = sc;
-    if (key) { const t = [...b.querySelectorAll('[data-act]')].find(x => JSON.stringify([x.dataset.act, x.dataset.id, x.dataset.mode, x.dataset.t, x.dataset.i]) === key); if (t && !t.disabled) t.focus(); }
+    if (key) { const t = [...b.querySelectorAll('[data-act]')].find(x => JSON.stringify([x.dataset.act, x.dataset.id, x.dataset.mode, x.dataset.t, x.dataset.i, x.dataset.v]) === key); if (t && !t.disabled) t.focus(); }
   }
   function setupAction(act, el, app) {
     const sh = M.S.shared;
@@ -389,15 +426,31 @@
         M.applyStore(id); U.announce(`${M.STORE[id].name} selected`); setupState.day = 0; break;
       }
       case 'setup-addr': M.J().selectedAddressId = el.dataset.id; M.commit('journey'); break;
+      case 'setup-pickup': if (!M.setPickupMethod(el.dataset.v)) U.toast('Not available at this store', 'err'); else U.announce(M.CONFIG.pickupMethods[el.dataset.v] + ' selected'); break;
+      case 'setup-dropoff': M.setDropoff(el.dataset.v); break;
       case 'setup-addr-toggle': setupState.addAddr = !setupState.addAddr; break;
+      case 'setup-gps': {
+        el.setAttribute('aria-disabled', 'true'); el.innerHTML = '<span class="spinner" aria-hidden="true"></span>Finding your location…';
+        setTimeout(() => { const g = D.SIM_GPS; setupState.searchErr = ''; setupState.zip = ''; M.setSearchLoc({ lat: g.lat, lng: g.lng, label: g.label, src: 'gps' }); U.announce('Showing stores nearest to your current location'); refreshSetup(); }, 700);
+        return true;
+      }
+      case 'setup-clear-loc': M.setSearchLoc(null); setupState.zip = ''; setupState.searchErr = ''; break;
       case 'setup-asap': M.setSchedule('asap'); U.announce('ASAP selected'); break;
       case 'setup-later': { const days = M.slotsFor(M.curStore(), sh.mode); const first = days.find(d => d.slots.length); if (first) { setupState.day = days.indexOf(first); M.setSchedule('later', first.slots[0]); } break; }
       case 'setup-day': setupState.day = Number(el.dataset.i); break;
-      case 'setup-slot': M.setSchedule('later', Number(el.dataset.t)); U.announce('Scheduled for ' + M.scheduleText(M.S.shared.schedule, M.curStore())); break;
+      case 'setup-slot': { const t = Number(el.dataset.t); if (!M.slotValid(M.curStore(), sh.mode, t)) { U.toast('That time just passed — pick another.', 'err'); break; } const ds = M.slotsFor(M.curStore(), sh.mode); const di = ds.findIndex(d => d.slots.includes(t)); if (di > -1) setupState.day = di; M.setSchedule('later', t); } U.announce('Scheduled for ' + M.scheduleText(M.S.shared.schedule, M.curStore())); break;
       default: return false;
     }
     refreshSetup();
     return true;
+  }
+  function storeSearch(form) {
+    const z = form.zip.value.trim(); setupState.zip = z;
+    const r = M.geocodeZip(z);
+    if (!r.ok) { setupState.searchErr = r.reason; refreshSetup(); const i = document.getElementById('ss-zip'); if (i) i.focus(); return; }
+    setupState.searchErr = ''; M.setSearchLoc({ lat: r.lat, lng: r.lng, label: r.label, src: 'zip' });
+    const n = M.storesNear(r); U.announce(`Nearest store: ${n[0].store.name}, ${M.fmtMiles(n[0].miles)}`);
+    refreshSetup();
   }
   function setupSubmitAddress(form) {
     const line = form.line.value.trim(); const err = form.querySelector('#sa-err');
@@ -446,5 +499,5 @@
     entry.dlg.addEventListener('click', (e) => { const q = e.target.closest('[data-chat-quick]'); if (q) send(q.dataset.chatQuick); });
   }
 
-  window.BUILDER = { itemView, builderAction, amendAction, openAmend, openSetup, setupAction, setupSubmitAddress, openStoreChange, openChat, refreshSetup, isSetupOpen: () => !!setupEntry, resetBuilder: () => { B = null; }, getB: () => B };
+  window.BUILDER = { storeSearch, itemView, builderAction, amendAction, openAmend, openSetup, setupAction, setupSubmitAddress, openStoreChange, openChat, refreshSetup, isSetupOpen: () => !!setupEntry, resetBuilder: () => { B = null; }, getB: () => B };
 })();

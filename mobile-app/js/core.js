@@ -2,7 +2,7 @@
    No backend: everything is simulated in browser-local storage. Money is integer cents. */
 (function () {
   'use strict';
-  const { CONFIG, STORES, INGREDIENTS, PRODUCTS, OFFERS, REWARDS, KIDS_DRINKS, CAKEPOP_FLAVORS } = window.MOD_DATA;
+  const { CONFIG, STORES, INGREDIENTS, PRODUCTS, OFFERS, REWARDS, KIDS_DRINKS, CAKEPOP_FLAVORS, SAMPLE_RECEIPTS } = window.MOD_DATA;
 
   const ING = Object.fromEntries(INGREDIENTS.map(i => [i.id, i]));
   const PROD = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
@@ -35,7 +35,7 @@
 
   /* ---------------- Defaults ---------------- */
   const defaultShared = () => ({
-    journey: 'guest', storeId: 's1', mode: 'pickup',
+    journey: 'guest', storeId: 's1', mode: 'pickup', pickupMethod: 'instore', dropoff: 'door', otp: null, searchLoc: null,
     schedule: { type: 'asap', slot: null },
     cart: { lines: [], couponId: null, rewardId: null },
     tip: { kind: 'pct', value: 18, custom: 0 },
@@ -463,9 +463,16 @@
     const oldFee = mode === 'delivery' ? from.deliveryFee : 0, newFee = newMode === 'delivery' ? to.deliveryFee : 0;
     return { from, to, mode, newMode, rows, oldFee, newFee, status: storeStatus(to, newMode) };
   }
+  function fixPickupMethod() {
+    const st = curStore();
+    if (!(st.pickupMethods || ['instore']).includes(S.shared.pickupMethod)) S.shared.pickupMethod = 'instore';
+  }
+  function setPickupMethod(m) { if (!(curStore().pickupMethods || ['instore']).includes(m)) return false; S.shared.pickupMethod = m; commit('shared'); return true; }
+  function setDropoff(d) { S.shared.dropoff = d === 'hand' ? 'hand' : 'door'; commit('shared'); }
   function applyStore(newId) {
     const to = STORE[newId];
     S.shared.storeId = newId;
+    S.shared.pickupMethod = (to.pickupMethods || ['instore']).includes(S.shared.pickupMethod) ? S.shared.pickupMethod : 'instore';
     if (!to.modes.includes(S.shared.mode)) S.shared.mode = to.modes[0];
     if (S.shared.schedule.type === 'later' && !slotValid(to, S.shared.mode, S.shared.schedule.slot)) S.shared.schedule = { type: 'asap', slot: null };
     commit('shared');
@@ -503,7 +510,7 @@
     }
     return o.createdAt;
   }
-  const STAGE_LABEL = { scheduled: 'Scheduled', received: 'Order received', preparing: 'Preparing', baking: 'In the oven', out: 'Out for delivery', delivered: 'Delivered', ready: 'Ready for pickup', completed: 'Picked up', canceled: 'Canceled' };
+  const STAGE_LABEL = { scheduled: 'Scheduled', received: 'Order received', accepted: 'Order accepted', preparing: 'Preparing', baking: 'In the oven', out: 'Out for delivery', delivered: 'Delivered', ready: 'Ready for pickup', completed: 'Picked up', canceled: 'Canceled' };
   function stageOf(o, now = Date.now()) {
     const st = CONFIG.stages[o.mode];
     if (o.canceled) return { id: 'canceled', idx: -1, done: true, label: o.refund && o.refund.status === 'approved' ? 'Canceled · Refunded' : 'Canceled', steps: st };
@@ -516,7 +523,7 @@
     const next = st[idx + 1];
     return { id, idx, done: idx === st.length - 1, label: STAGE_LABEL[id], steps: st, start, nextAt: next ? start + next[1] * 1000 : null, progress: Math.min(1, el / st[st.length - 1][1]) };
   }
-  const canAmend = (o) => { const s = stageOf(o); return !o.canceled && (s.id === 'scheduled' || s.id === 'received'); };
+  const canAmend = (o) => { const s = stageOf(o); return !o.canceled && (s.id === 'scheduled' || s.id === 'received' || s.id === 'accepted'); };
   function etaOf(o) {
     if (o.schedule && o.schedule.type === 'later' && o.schedule.slot) return o.schedule.slot;
     return orderStart(o) + CONFIG.stages[o.mode].slice(-1)[0][1] * 1000;
@@ -539,6 +546,8 @@
     const pd = (form.phone || '').replace(/\D/g, '');
     if (pd.length < 10 || pd.length > 15) fe.phone = 'Phone number must contain 10–15 digits.';
     if (q.mode === 'delivery' && (!form.address || form.address.trim().length < 6)) fe.address = 'Enter a delivery address.';
+    if (q.mode === 'pickup' && sh.pickupMethod === 'curbside' && (!form.vehicle || form.vehicle.trim().length < 3)) fe.vehicle = 'Describe your vehicle so we can find you (e.g. Blue Honda Civic).';
+    if (q.mode === 'pickup' && !(store.pickupMethods || ['instore']).includes(sh.pickupMethod)) blockers.push(`${CONFIG.pickupMethods[sh.pickupMethod]} isn’t available at ${store.name}. Choose another pickup option.`);
     const st = storeStatus(store, q.mode);
     if (!st.ok) blockers.push(st.reason);
     if (sh.schedule.type === 'later') { if (!slotValid(store, q.mode, sh.schedule.slot)) blockers.push('Your scheduled time has expired or is no longer available — choose a new time.'); }
@@ -565,6 +574,8 @@
       contact: { name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() },
       address: q.mode === 'delivery' ? form.address.trim() : null, instructions: q.mode === 'delivery' ? (form.instructions || '').trim() : null,
       allergens: form.allergens || [], kitchenNote: (form.kitchenNote || '').trim(),
+      pickupMethod: q.mode === 'pickup' ? sh.pickupMethod : null, vehicle: q.mode === 'pickup' && sh.pickupMethod === 'curbside' ? (form.vehicle || '').trim() : null,
+      dropoff: q.mode === 'delivery' ? sh.dropoff : null, arrived: null,
       lines: q.priced.map(snapshotLine),
       totals: { subtotal: q.subtotal, discount: q.discount, discountLabel: q.discountLabel, deliveryFee: q.deliveryFee, baseDelivery: q.baseDelivery, tax: q.tax, tip: q.tipAmt, total: q.total, foodAfter: q.foodAfter },
       tipRule: clone(sh.tip),
@@ -650,6 +661,24 @@
     commit('journey');
     return req;
   }
+  function restoreTenders(o, j) {
+    if (o.reward) { j.points += o.reward.cost; activity(j, { type: 'refund', text: `Reward points restored · ${o.id}`, points: o.reward.cost, orderId: o.id }); }
+    if (o.payment.credit) { j.wallet.credit += o.payment.credit; activity(j, { type: 'credit', text: `Service credit restored · ${o.id}`, amount: o.payment.credit, orderId: o.id }); }
+    if (o.payment.gift) { j.wallet.gift += o.payment.gift; activity(j, { type: 'wallet', text: `Wallet funds restored · ${o.id}`, amount: o.payment.gift, orderId: o.id }); }
+  }
+  function cancelOrder(id, reason) {
+    const f = findOrder(id); if (!f) return { ok: false, reason: 'Order not found' };
+    const o = f.order;
+    if (o.canceled) return { ok: false, reason: 'This order is already canceled.' };
+    if (!canAmend(o)) return { ok: false, reason: 'We’ve started preparing this order, so it can’t be canceled here. Contact support for help.' };
+    o.canceled = true; o.canceledAt = Date.now(); o.cancelReason = reason || 'Canceled by customer';
+    o.refund = { status: 'approved', self: true, requestedAt: Date.now(), resolvedAt: Date.now(), amount: o.payment.other };
+    if (f.journey === 'member') restoreTenders(o, f.j);
+    o.support.push({ id: 'SR-' + digits(5), at: Date.now(), type: 'cancel', message: o.cancelReason, status: 'Canceled · full refund (simulated)' });
+    commit('journey');
+    return { ok: true, order: o };
+  }
+  function imHere(id) { const f = findOrder(id); if (!f) return false; f.order.arrived = Date.now(); commit('journey'); return true; }
   function reconcileRefund(f) {
     const o = f.order; const j = f.j;
     if (f.journey === 'member' && o.pointsAwarded && o.pointsEarned > j.points) {
@@ -660,9 +689,7 @@
     o.canceled = true; o.canceledAt = Date.now();
     o.refund.status = 'approved'; o.refund.resolvedAt = Date.now(); o.refund.amount = o.payment.other;
     if (f.journey === 'member') {
-      if (o.reward) { j.points += o.reward.cost; activity(j, { type: 'refund', text: `Reward points restored · ${o.id}`, points: o.reward.cost, orderId: o.id }); }
-      if (o.payment.credit) { j.wallet.credit += o.payment.credit; activity(j, { type: 'credit', text: `Service credit restored · ${o.id}`, amount: o.payment.credit, orderId: o.id }); }
-      if (o.payment.gift) { j.wallet.gift += o.payment.gift; activity(j, { type: 'wallet', text: `Wallet funds restored · ${o.id}`, amount: o.payment.gift, orderId: o.id }); }
+      restoreTenders(o, j);
       if (o.pointsAwarded && o.pointsEarned) { j.points -= o.pointsEarned; j.lifetime = Math.max(0, j.lifetime - o.pointsEarned); activity(j, { type: 'reverse', text: `Points reversed (refund) · ${o.id}`, points: -o.pointsEarned, orderId: o.id }); }
     }
     const req = o.support.find(s => s.id === o.refund.requestId); if (req) req.status = 'Refund approved (simulated)';
@@ -705,11 +732,25 @@
   function claim(kind, input) {
     const j = J();
     if (!isMember()) return { ok: false, reason: 'Switch to the sample member journey to claim points.' };
+    if (kind === 'receipt' && /^RCPT-/i.test((input || '').trim())) return claim('scan', input);
     if (kind === 'receipt') {
-      if ((input || '').trim().toUpperCase() !== CONFIG.receiptClaim.code) return { ok: false, reason: 'That receipt code wasn’t found.' };
+      if ((input || '').trim().toUpperCase() !== CONFIG.receiptClaim.code) return { ok: false, reason: 'That code wasn’t found. Check the code on your receipt.' };
       if (j.claims.receipt) return { ok: false, reason: 'This receipt has already been claimed.' };
       j.claims.receipt = Date.now(); j.points += CONFIG.receiptClaim.points; j.lifetime += CONFIG.receiptClaim.points;
       activity(j, { type: 'bonus', text: `Receipt claim ${CONFIG.receiptClaim.code}`, points: CONFIG.receiptClaim.points });
+    } else if (kind === 'scan') {
+      const code = (input || '').trim().toUpperCase();
+      const r = SAMPLE_RECEIPTS.find(x => x.id === code);
+      if (!r) return { ok: false, reason: 'We couldn’t read that receipt. Try again, or enter the code printed under the barcode.' };
+      j.claims.receipts = j.claims.receipts || [];
+      if (j.claims.receipts.includes(r.id)) return { ok: false, reason: 'This receipt has already been credited.' };
+      if (r.daysAgo > CONFIG.receiptMaxAgeDays) return { ok: false, reason: `Receipts must be scanned within ${CONFIG.receiptMaxAgeDays} days of purchase.` };
+      const est = estimatePoints(j, r.total);
+      if (!est.points) return { ok: false, reason: 'Daily points cap reached — try again tomorrow.' };
+      j.claims.receipts.push(r.id); j.points += est.points; j.lifetime += est.points;
+      activity(j, { type: 'bonus', text: `In-store receipt ${r.id} · ${STORE[r.storeId].name}`, points: est.points });
+      commit('journey');
+      return { ok: true, points: est.points, receipt: r };
     } else if (kind === 'profile') {
       if (j.claims.profile) return { ok: false, reason: 'Profile bonus already claimed.' };
       const p = j.profile; if (!p.name || !p.email || !p.phone || !p.birthday) return { ok: false, reason: 'Add your name, email, phone and birthday first.' };
@@ -734,6 +775,53 @@
     j.wallet.gift += amount; activity(j, { type: 'wallet', text: `Wallet top-up (${method}, simulated)`, amount });
     commit('journey'); return true;
   }
+
+  /* -------- Store search by ZIP / location -------- */
+  function geocodeZip(zip) {
+    const z = (zip || '').trim(); const D = window.MOD_DATA;
+    if (!/^\d{5}$/.test(z)) return { ok: false, reason: 'Enter a 5-digit US ZIP code.' };
+    if (D.ZIPS[z]) { const [lat, lng, city] = D.ZIPS[z]; return { ok: true, lat, lng, label: `${z} · ${city}`, approx: false }; }
+    const p = D.ZIP_PREFIX[z.slice(0, 3)] || D.ZIP_REGION[z[0]];
+    if (p) return { ok: true, lat: p[0], lng: p[1], label: `${z} · ${p[2]} (approximate)`, approx: true };
+    return { ok: false, reason: 'We couldn’t find that ZIP code.' };
+  }
+  function milesBetween(a, b) {
+    const R = 3958.8, rad = (x) => x * Math.PI / 180;
+    const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  function storesNear(loc) { return STORES.map(s => ({ store: s, miles: milesBetween(loc, s) })).sort((a, b) => a.miles - b.miles); }
+  const fmtMiles = (m) => m < 0.1 ? '< 0.1 mi' : m < 10 ? `${m.toFixed(1)} mi` : `${Math.round(m).toLocaleString()} mi`;
+  function setSearchLoc(loc) { S.shared.searchLoc = loc; commit('shared'); }
+
+  /* -------- Passwordless sign-in (simulated OTP) -------- */
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  function requestOtp(channel, value) {
+    const v = (value || '').trim();
+    if (channel === 'email' && !EMAIL_RE.test(v)) return { ok: false, reason: 'Enter a valid email address.' };
+    if (channel === 'sms') { const d = v.replace(/\D/g, ''); if (d.length < 10 || d.length > 15) return { ok: false, reason: 'Enter a mobile number with 10–15 digits.' }; }
+    const prev = S.shared.otp; const now = Date.now();
+    if (prev && prev.value === v && prev.channel === channel && now - prev.sentAt < CONFIG.otp.resendSec * 1000) return { ok: false, reason: `Please wait ${Math.ceil((CONFIG.otp.resendSec * 1000 - (now - prev.sentAt)) / 1000)}s before requesting another code.` };
+    const code = String(Math.floor(Math.random() * 1e6)).padStart(CONFIG.otp.length, '0');
+    S.shared.otp = { channel, value: v, code, sentAt: now, expires: now + CONFIG.otp.ttlSec * 1000, attempts: 0 };
+    commit('shared');
+    return { ok: true, code };
+  }
+  function verifyOtp(code) {
+    const o = S.shared.otp; if (!o) return { ok: false, reason: 'Request a new code to continue.' };
+    if (Date.now() > o.expires) return { ok: false, reason: 'This code has expired. Request a new one.', expired: true };
+    if (o.attempts >= CONFIG.otp.maxAttempts) return { ok: false, reason: 'Too many attempts. Request a new code.', locked: true };
+    if ((code || '').replace(/\D/g, '') !== o.code) { o.attempts++; commit('shared'); const left = CONFIG.otp.maxAttempts - o.attempts; return { ok: false, reason: left ? `That code isn’t right. ${left} attempt${left > 1 ? 's' : ''} left.` : 'Too many attempts. Request a new code.', locked: !left }; }
+    const m = S.journeys.member.profile;
+    const known = o.channel === 'email' ? o.value.toLowerCase() === (m.email || '').toLowerCase() : o.value.replace(/\D/g, '').slice(-10) === (m.phone || '').replace(/\D/g, '').slice(-10);
+    const ident = { channel: o.channel, value: o.value };
+    const sw = switchJourney('member'); if (!sw.ok) return { ok: false, reason: sw.reason };
+    S.shared.otp = null; S.journeys.member.signedInAt = Date.now(); S.journeys.member.signedInWith = ident;
+    commit();
+    return { ok: true, known, ident };
+  }
+  function signOut() { const r = switchJourney('guest'); if (r.ok) { S.journeys.member.signedInAt = null; commit('journey'); } return r; }
 
   /* -------- Groups -------- */
   function createGroup({ name, budget, deadlineMin, hostName }) {
@@ -841,7 +929,7 @@
     addToCart, updateLine, removeLine, setQty, cartCount, suggestion, sameConfig,
     previewStoreChange, applyStore, setMode, setSchedule, switchJourney,
     stageOf, STAGE_LABEL, canAmend, etaOf, validateCheckout, placeOrder, findOrder, reorder, amendOrder,
-    addSupport, setFeedback, tick, challengeProgress, claim, topUp, activity,
+    addSupport, setFeedback, tick, cancelOrder, imHere, geocodeZip, milesBetween, storesNear, fmtMiles, setSearchLoc, setPickupMethod, setDropoff, fixPickupMethod, requestOtp, verifyOtp, signOut, challengeProgress, claim, topUp, activity,
     createGroup, getGroup, groupLocked, participantSubtotal, groupCheckIssues, startGroupCheckout, reopenGroup, cancelGroup, resetDemo
   };
 })();

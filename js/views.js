@@ -24,20 +24,21 @@
     const sh = M.S.shared, store = M.curStore(), status = M.storeStatus(store, sh.mode);
     const j = M.J(); const addr = j.addresses.find(a => a.id === j.selectedAddressId);
     const time = sh.schedule.type === 'later' ? M.scheduleText(sh.schedule, store) : (status.asap ? `ASAP · ~${M.leadMin(store, sh.mode)} min` : 'ASAP unavailable');
-    return { sh, store, status, addr, time };
+    const method = sh.mode === 'delivery' ? M.CONFIG.dropoffs[sh.dropoff] : M.CONFIG.pickupMethods[sh.pickupMethod];
+    return { sh, store, status, addr, time, method };
   }
   V.contextSummary = contextSummary;
 
   function orderContextCard(compact) {
-    const { sh, store, status, addr, time } = contextSummary();
+    const { sh, store, status, addr, time, method } = contextSummary();
     const modeBtn = (m, label, ic) => {
       const supported = store.modes.includes(m);
       return `<button class="seg-btn ${sh.mode === m ? 'on' : ''}" data-act="mode" data-mode="${m}" aria-pressed="${sh.mode === m}" ${supported ? '' : 'disabled aria-disabled="true"'} title="${supported ? '' : 'Not offered at this store'}">${icon(ic)}${label}</button>`;
     };
     return `<section class="ctx-card ${compact ? 'compact' : ''}" aria-label="Your order setup">
       <div class="seg seg-mode" role="group" aria-label="Fulfillment">${modeBtn('pickup', 'Pickup', 'bag')}${modeBtn('delivery', 'Delivery', 'truck')}</div>
-      <button class="ctx-cell" data-act="open-setup" data-tab="store">${icon('store')}<span><small>${sh.mode === 'delivery' ? 'Delivering from' : 'Pickup at'}</small><strong>${esc(store.name)}, ${esc(store.city.split(',')[0])}</strong>${!status.ok ? `<em class="warn">${esc(status.reason)}</em>` : ''}</span>${icon('chevR', 'chev')}</button>
-      ${sh.mode === 'delivery' ? `<button class="ctx-cell" data-act="open-setup" data-tab="address">${icon('pin')}<span><small>Deliver to</small><strong>${addr ? esc(addr.label + ' · ' + addr.line) : 'Add a delivery address'}</strong></span>${icon('chevR', 'chev')}</button>` : ''}
+      <button class="ctx-cell" data-act="open-setup" data-tab="store">${icon('store')}<span><small>${sh.mode === 'delivery' ? 'Delivering from' : esc(method) + ' at'}</small><strong>${esc(store.name)}, ${esc(store.city.split(',')[0])}</strong>${!status.ok ? `<em class="warn">${esc(status.reason)}</em>` : ''}</span>${icon('chevR', 'chev')}</button>
+      ${sh.mode === 'delivery' ? `<button class="ctx-cell" data-act="open-setup" data-tab="address">${icon('pin')}<span><small>Deliver to · ${esc(method)}</small><strong>${addr ? esc(addr.label + ' · ' + addr.line) : 'Add a delivery address'}</strong></span>${icon('chevR', 'chev')}</button>` : ''}
       <button class="ctx-cell" data-act="open-setup" data-tab="time">${icon('clock')}<span><small>${sh.schedule.type === 'later' ? 'Scheduled for' : 'When'}</small><strong>${esc(time)}</strong>${!status.asap && sh.schedule.type !== 'later' && status.ok ? '<em class="warn">Schedule for later</em>' : ''}</span>${icon('chevR', 'chev')}</button>
     </section>`;
   }
@@ -79,12 +80,17 @@
   }
   V.stageBadge = stageBadge;
 
+  function methodOf(o) {
+    if (o.mode === 'delivery') return 'Delivery' + (o.dropoff ? ' · ' + M.CONFIG.dropoffs[o.dropoff] : '');
+    return M.CONFIG.pickupMethods[o.pickupMethod || 'instore'];
+  }
+  V.methodOf = methodOf;
   function orderCard(o, opts = {}) {
     const s = M.stageOf(o); const j = M.J();
     const items = o.lines.map(l => `${l.qty}× ${l.name}`).join(', ');
     return `<article class="ocard">
       <div class="ocard-top"><div><h3>${esc(o.id)}${o.group ? ` <span class="pill pill-info">${icon('users')}Group</span>` : ''}</h3>
-        <p class="muted">${M.fmtDate(o.createdAt, o.tz)} · ${esc(o.storeName)} · ${o.mode === 'delivery' ? 'Delivery' : 'Pickup'}${o.schedule.type === 'later' ? ` · Scheduled ${esc(M.fmtTime(o.schedule.slot, o.tz, { date: true }))}` : ''}</p></div>${stageBadge(o)}</div>
+        <p class="muted">${M.fmtDate(o.createdAt, o.tz)} · ${esc(o.storeName)} · ${esc(methodOf(o))}${o.schedule.type === 'later' ? ` · Scheduled ${esc(M.fmtTime(o.schedule.slot, o.tz, { date: true }))}` : ''}</p></div>${stageBadge(o)}</div>
       <p class="ocard-items">${esc(items)}</p>
       <div class="ocard-foot"><strong>${money(o.totals.total)}</strong>
         <div class="btn-row">
@@ -92,6 +98,7 @@
           <a class="btn btn-sm btn-ghost" href="#/receipt/${o.id}">${icon('receipt')}Receipt</a>
           <a class="btn btn-sm btn-ghost" href="#/support/${o.id}">${icon('help')}Help</a>
           <button class="btn btn-sm btn-outline" data-act="reorder" data-id="${o.id}">${icon('refresh')}Reorder</button>
+          ${M.canAmend(o) && o.journey === M.S.shared.journey ? `<button class="btn btn-sm btn-ghost danger" data-act="cancel-order" data-id="${o.id}">${icon('x')}Cancel order</button>` : ''}
           ${j.goTo === o.id ? `<span class="pill pill-ok">${icon('star')}Go-to order</span>` : (!o.canceled ? `<button class="btn btn-sm btn-ghost" data-act="set-goto" data-id="${o.id}">${icon('star')}Make go-to</button>` : '')}
         </div></div></article>`;
   }
@@ -107,6 +114,16 @@
     return h;
   }
   V.totalsRows = totalsRows;
+
+  function guestFavorites() {
+    const j = M.J(), store = M.curStore(), sh = M.S.shared;
+    const pop = (store.popular || M.CONFIG.popularDefault).map(id => M.PROD[id]).filter(p => p && M.isPublished(p) && !M.productIssue(p, store, sh.mode)).slice(0, 6);
+    const mine = j.favorites.map(id => M.PROD[id]).filter(p => p && M.isPublished(p));
+    return `<section class="sect"><div class="sect-head"><div><h2>Favorites in your area</h2><p class="muted small" style="margin:0">Most-ordered at ${esc(store.name)}, ${esc(store.city.split(',')[0])}</p></div><a href="#/menu" class="link">Full menu ${icon('chevR')}</a></div>
+      ${mine.length ? `<div class="fav-strip" aria-label="Your favorites"><span class="small muted">${icon('heart')}Your favorites:</span>${mine.map(p => `<a class="chip" href="#/item/${p.id}">${esc(p.name)}</a>`).join('')}</div>` : ''}
+      <div class="pgrid">${pop.map(productCard).join('')}</div>
+      <p class="small muted">${icon('star')}<a href="#/login">Sign in</a> to see your go-to orders and reorder in one tap.</p></section>`;
+  }
 
   /* ---------------- HOME ---------------- */
   V.home = function () {
@@ -138,10 +155,10 @@
       <section class="sect"><div class="sect-head"><h2>What are you craving?</h2><a href="#/menu" class="link">Full menu ${icon('chevR')}</a></div>
         <div class="cat-row">${window.MOD_DATA.CATEGORIES.map(c => `<a class="cat-tile" href="#/menu?cat=${c.id}"><span class="cat-art">${U.catArt(c.id)}</span><span>${esc(c.name)}</span></a>`).join('')}</div></section>
       <div class="home-grid">
-        <section class="sect"><div class="sect-head"><h2>Your go-to orders</h2><a href="#/orders" class="link">All orders ${icon('chevR')}</a></div>
+        ${!member ? guestFavorites() : `<section class="sect"><div class="sect-head"><h2>Your go-to orders</h2><a href="#/orders" class="link">All orders ${icon('chevR')}</a></div>
           ${goTo || recent.length ? `<div class="go-list">${goTo ? goCard(goTo, 'Go-to order') : ''}${recent.map(o => goCard(o, 'Recent')).join('')}</div>`
             : empty('refresh', 'No orders yet', 'Your recent and go-to orders will appear here for one-tap reordering.', '<a class="btn btn-primary" href="#/menu">Browse the menu</a>')}
-        </section>
+        </section>`}
         <aside class="home-side">
           ${member ? `<section class="rewards-card" aria-label="Rewards summary">
               <div class="rc-top"><div><span class="eyebrow light">MOD Rewards · ${esc(tier.name)}</span><div class="rc-points"><strong>${j.points.toLocaleString()}</strong> pts</div>
@@ -152,7 +169,7 @@
               <div class="btn-row"><a class="btn btn-sm btn-white" href="#/rewards">Redeem</a>${!j.enrolled ? '<a class="btn btn-sm btn-glass" href="#/join">Complete enrollment</a>' : '<a class="btn btn-sm btn-glass" href="#/wallet">Wallet</a>'}</div>
             </section>`
             : `<section class="rewards-card guest"><span class="eyebrow light">MOD Rewards</span><h2>Earn on every pizza</h2><p>${M.CONFIG.pointsPerDollar} points per $1, free pizza at ${M.CONFIG.pizzaRewardCost.toLocaleString()} points, member-only coupons and a digital wallet.</p>
-              <div class="btn-row"><button class="btn btn-sm btn-white" data-act="journey" data-j="member" data-go="#/join">Join (sample)</button><button class="btn btn-sm btn-glass" data-act="journey" data-j="member">Try member view</button></div><p class="tiny light">Demo journey switch — not real sign-in.</p></section>`}
+              <div class="btn-row"><a class="btn btn-sm btn-white" href="#/login">Sign in</a><a class="btn btn-sm btn-glass" href="#/login?join=1">Join MOD Rewards</a></div><p class="tiny light">Passwordless — we text or email you a code.</p></section>`}
           <a class="offer-feature" href="#/offer/${feat.id}"><span class="eyebrow">${icon('tag')}Featured offer</span><strong>${esc(feat.title)}</strong><span>${esc(feat.blurb)}</span><code>${esc(feat.code)}</code></a>
           <div class="mini-links">
             <a href="#/favorites" class="mini-link">${icon('heart')}<span><strong>Saved pizzas & favorites</strong><small>${j.savedPizzas.length} saved · ${j.favorites.length} favorites</small></span>${icon('chevR')}</a>
@@ -245,12 +262,18 @@
           ${discountBlock(q, eligible)}
           <div class="totals">${totalsRows({ subtotal: q.subtotal, discount: q.discount, discountLabel: q.discountLabel, deliveryFee: q.deliveryFee, baseDelivery: q.freeDelivery ? q.baseDelivery : 0, tax: q.tax }, { mode: q.mode, tip: false }).replace(/<div class="trow total">[\s\S]*$/, '')}
             <div class="trow total"><span><strong>Estimated total</strong><small>before tip</small></span><span><strong>${money(q.foodAfter + q.deliveryFee + q.tax)}</strong></span></div></div>
-          ${q.points.points ? `<p class="earn">${icon('star')}You’ll earn about <strong>${q.points.points} pts</strong></p>` : ''}
+          ${earnLine(q)}
           <a class="btn btn-primary btn-block btn-lg" href="#/checkout">Checkout ${icon('chevR')}</a>
         </aside>
       </div>`;
   };
 
+  function earnLine(q) {
+    if (M.isMember()) return `<p class="earn">${icon('star')}<span>You’ll earn about <strong>${q.points.points} pts</strong> once this order is completed${q.points.rule ? ` <small>(${q.points.rule.rate}/$1 × ${q.points.rule.mult} ${esc(q.points.rule.tier)})</small>` : ''}${q.points.capped ? ' <small>· daily cap reached</small>' : ''}</span></p>`;
+    const est = Math.floor(Math.floor(q.foodAfter / 100) * M.CONFIG.pointsPerDollar);
+    return `<p class="earn muted">${icon('star')}<span><a href="#/login">Sign in</a> to earn about <strong>${est} pts</strong> on this order.</span></p>`;
+  }
+  V.earnLine = earnLine;
   function discountBlock(q, eligible) {
     const sh = M.S.shared; const locked = false;
     let h = '<div class="disc">';
@@ -298,7 +321,7 @@
     const status = M.storeStatus(q.store, q.mode);
 
     return `${pageHead(g ? `Group checkout · ${esc(g.name)}` : 'Checkout', '', '#/cart')}
-      ${blockers.length ? `<div class="note note-err" role="alert" id="co-blockers" tabindex="-1">${icon('alert')}<div><strong>We can’t place this order yet</strong><ul>${blockers.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div></div>` : ''}
+      ${blockers.length ? `<div class="note note-err" role="alert" id="co-blockers" tabindex="-1">${icon('alert')}<div><strong>We can’t place this order yet</strong><ul>${blockers.map(b => `<li>${esc(b)}</li>`).join('')}</ul>${(sh.schedule.type === 'later' && !M.slotValid(q.store, q.mode, sh.schedule.slot)) || (sh.schedule.type !== 'later' && status.ok && !status.asap) ? '<div class="btn-row"><button type="button" class="btn btn-sm btn-primary" data-act="use-next-slot">Use next available time</button><button type="button" class="btn btn-sm btn-outline" data-act="open-setup" data-tab="time">Pick a time</button></div>' : ''}</div></div>` : ''}
       <form class="two-col checkout" data-form="checkout" novalidate>
         <div class="co-main">
           <section class="card co-sect" aria-labelledby="co-h-contact"><h2 id="co-h-contact" class="h3">${icon('user')}Contact</h2>
@@ -313,8 +336,11 @@
               ${j.addresses.length && !g ? `<div class="field"><label for="co-saved">Saved address</label><select id="co-saved" data-act="co-addr">${j.addresses.map(a => `<option value="${a.id}" ${a.id === j.selectedAddressId ? 'selected' : ''}>${esc(a.label)} — ${esc(a.line)}</option>`).join('')}<option value="">Enter a different address…</option></select></div>` : ''}
               ${field('address', 'Delivery address', 'text', v.address, 'autocomplete="street-address" required')}
               <div class="field"><label for="co-instructions">Delivery instructions <span class="opt">optional</span></label><textarea id="co-instructions" name="instructions" rows="2" data-draft="instructions" placeholder="Gate code, floor, where to leave it…">${esc(v.instructions)}</textarea></div>
+              <fieldset class="opt-fs"><legend>Drop-off</legend><div class="method-grid two">${Object.entries(M.CONFIG.dropoffs).map(([k, l]) => `<label class="method ${sh.dropoff === k ? 'on' : ''}"><input type="radio" name="dropoff" value="${k}" ${sh.dropoff === k ? 'checked' : ''} data-act="dropoff" data-v="${k}">${icon(k === 'door' ? 'home' : 'user')}<span><strong>${l}</strong><small>${k === 'door' ? 'Contactless — we’ll send a photo' : 'Courier hands it to you'}</small></span></label>`).join('')}</div></fieldset>
               <p class="tiny muted">Address entry is local text only — no live verification in this prototype.</p>`
-              : `<div class="pickup-note">${icon('info')}<span>${esc(q.store.pickupNote)}</span></div>`}
+              : `${pickupMethodPicker(q.store, sh.pickupMethod, !!g)}
+                ${sh.pickupMethod === 'curbside' ? field('vehicle', 'Your vehicle', 'text', d.vehicle || j.profile.vehicle || '', 'placeholder="e.g. Blue Honda Civic, WA plate ending 42" autocomplete="off"') : ''}
+                <div class="pickup-note">${icon('info')}<span>${esc(pickupNote(q.store, sh.pickupMethod))}</span></div>`}
           </section>
 
           <section class="card co-sect" aria-labelledby="co-h-kit"><h2 id="co-h-kit" class="h3">${icon('alert')}Allergies & kitchen note</h2>
@@ -351,12 +377,26 @@
             ${member && (q.credit || q.gift) ? `<div class="trow alloc"><span>Service credit</span><span>−${money(q.credit)}</span></div><div class="trow alloc"><span>Gift-wallet funds</span><span>−${money(q.gift)}</span></div>` : ''}
             <div class="trow due"><span><strong>Remaining due</strong><small>${sh.pay.method === 'wallet' ? 'MOD Wallet' : ({ card: 'Card', apple: 'Apple Pay', google: 'Google Pay' }[sh.pay.method] || 'Card')}</small></span><span><strong>${money(member ? (sh.pay.method === 'wallet' ? q.shortfall : q.other) : q.total)}</strong></span></div>
           </div>
-          ${member ? `<p class="earn">${icon('star')}Estimated <strong>${q.points.points} pts</strong> (${q.points.rule.rate}/$1 × ${q.points.rule.mult} ${esc(q.points.rule.tier)})${q.points.capped ? ` · daily cap ${M.CONFIG.dailyPointCap.toLocaleString()} reached` : ''}</p>` : '<p class="earn muted">Guest orders don’t earn points.</p>'}
+          ${earnLine(q)}
           <button class="btn btn-primary btn-block btn-lg" type="submit" id="place-btn">Place order · ${money(q.total)}</button>
           <p class="tiny muted center">By placing this order you confirm the details above. Payment is simulated.</p>
         </aside>
       </form>`;
   };
+
+  function pickupNote(store, m) {
+    if (m === 'curbside') return 'Park in a marked curbside spot and tap “I’m here” on your order screen — we’ll bring it out.';
+    if (m === 'drivethru') return 'Pull into the MOD drive-thru lane and give the name on your order at the window.';
+    return store.pickupNote;
+  }
+  V.pickupNote = pickupNote;
+  function pickupMethodPicker(store, cur, locked) {
+    const all = Object.keys(M.CONFIG.pickupMethods); const ok = store.pickupMethods || ['instore'];
+    const ic = { instore: 'store', curbside: 'truck', drivethru: 'clock' };
+    const sub = { instore: 'Grab it from the pickup shelf', curbside: 'We bring it to your car', drivethru: 'Pick up at the window' };
+    return `<fieldset class="opt-fs"><legend>Pickup option</legend><div class="method-grid">${all.map(k => `<label class="method ${cur === k ? 'on' : ''} ${ok.includes(k) ? '' : 'off'}"><input type="radio" name="pickupMethod" value="${k}" ${cur === k ? 'checked' : ''} ${ok.includes(k) && !locked ? '' : 'disabled'} data-act="pickup-method" data-v="${k}">${icon(ic[k])}<span><strong>${M.CONFIG.pickupMethods[k]}</strong><small>${ok.includes(k) ? sub[k] : 'Not at this store'}</small></span></label>`).join('')}</div></fieldset>`;
+  }
+  V.pickupMethodPicker = pickupMethodPicker;
 
   /* ---------------- TRACKING ---------------- */
   V.order = function (id) {
@@ -370,19 +410,24 @@
     }).join('');
     const amend = M.canAmend(o) && o.lines.some(l => l.cat === 'pizzas') && !other;
     const refund = o.refund;
-    return `${pageHead(s.id === 'canceled' ? 'Order canceled' : s.done ? (o.mode === 'delivery' ? 'Delivered — enjoy!' : 'Picked up — enjoy!') : s.id === 'scheduled' ? 'Order scheduled' : 'Thanks! Your order is in.', `Order <strong>${esc(o.id)}</strong> · ${esc(o.storeName)} · ${o.mode === 'delivery' ? 'Delivery' : 'Pickup'}`, '#/orders')}
+    return `${pageHead(s.id === 'canceled' ? 'Order canceled' : s.done ? (o.mode === 'delivery' ? 'Delivered — enjoy!' : 'Picked up — enjoy!') : s.id === 'scheduled' ? 'Order scheduled' : 'Thanks! Your order is in.', `Order <strong>${esc(o.id)}</strong> · ${esc(o.storeName)} · ${esc(methodOf(o))}`, '#/orders')}
       ${other ? note('This order belongs to the other demo journey. Switch journeys to manage it.', 'warn') : ''}
-      ${refund ? note(refund.status === 'review' ? 'Refund request received — our team is reviewing it (simulated, about 20 seconds). This isn’t an instant cancellation.' : refund.status === 'approved' ? `Full refund approved (simulated) — ${money(refund.amount || 0)} to the original payment method. Points, wallet funds and service credit were reconciled.` : esc(refund.reason || 'Refund needs manual review.'), refund.status === 'blocked' ? 'warn' : 'info') : ''}
+      ${o.canceled && o.refund && o.refund.self ? note(`You canceled this order${o.cancelReason ? ` (${esc(o.cancelReason)})` : ''}. Full refund of ${money(o.refund.amount || 0)} to your original payment (simulated)${o.journey === 'member' ? '; points, wallet funds and service credit were restored' : ''}.`, 'info') : ''}
+      ${refund && !refund.self ? note(refund.status === 'review' ? 'Refund request received — our team is reviewing it (simulated, about 20 seconds). This isn’t an instant cancellation.' : refund.status === 'approved' ? `Full refund approved (simulated) — ${money(refund.amount || 0)} to the original payment method. Points, wallet funds and service credit were reconciled.` : esc(refund.reason || 'Refund needs manual review.'), refund.status === 'blocked' ? 'warn' : 'info') : ''}
       <div class="two-col track">
         <div>
           <section class="card track-hero" aria-live="polite">
             <div class="track-top"><div><span class="eyebrow">${s.id === 'canceled' ? 'Status' : s.done ? 'Completed' : o.schedule.type === 'later' ? 'Scheduled for' : 'Estimated ' + (o.mode === 'delivery' ? 'arrival' : 'ready time')}</span>
               <div class="eta">${s.id === 'canceled' ? 'Canceled' : esc(M.fmtTime(s.done && o.completedAt ? o.completedAt : eta, o.tz, { date: o.schedule.type === 'later' }))}</div></div>${stageBadge(o)}</div>
-            <ol class="tsteps" aria-label="Order progress">${steps}</ol>
+            <ol class="tsteps" aria-label="Order progress" style="--n:${s.steps.length}">${steps}</ol>
             ${!s.done && s.id !== 'scheduled' ? '<p class="tiny muted">Demo timeline runs in about 6 minutes. Tracking is simulated — no live GPS or courier connection.</p>' : ''}
+            ${!other && M.canAmend(o) ? `<div class="btn-row"><button class="btn btn-sm btn-outline danger" data-act="cancel-order" data-id="${o.id}">${icon('x')}Cancel order</button><span class="tiny muted">Free to cancel until we start preparing.</span></div>` : ''}
             ${s.id === 'scheduled' ? `<p class="small">We’ll start preparing ${esc(M.fmtTime(s.start, o.tz, { date: true }))}. You can still change toppings until then.</p>` : ''}
           </section>
-          ${o.mode === 'delivery' ? mapCard(o, s) : `<section class="card pickup-card"><h2 class="h3">${icon('store')}Pickup at ${esc(o.storeName)}</h2><p>${esc(o.storeAddress)}</p><div class="pickup-note">${icon('info')}<span>${esc(o.pickupNote)}</span></div></section>`}
+          ${o.mode === 'delivery' ? mapCard(o, s) : `<section class="card pickup-card"><h2 class="h3">${icon(o.pickupMethod === 'drivethru' ? 'clock' : o.pickupMethod === 'curbside' ? 'truck' : 'store')}${esc(methodOf(o))} at ${esc(o.storeName)}</h2><p>${esc(o.storeAddress)}</p>
+            ${o.vehicle ? `<p class="small"><strong>Vehicle:</strong> ${esc(o.vehicle)}</p>` : ''}
+            <div class="pickup-note">${icon('info')}<span>${esc(o.pickupMethod && o.pickupMethod !== 'instore' ? pickupNote(null, o.pickupMethod) : o.pickupNote)}</span></div>
+            ${o.pickupMethod === 'curbside' && !o.canceled && !s.done && !other ? (o.arrived ? `<p class="elig ok">${icon('check')}Team notified at ${esc(M.fmtTime(o.arrived, o.tz))} — we’re bringing it out.</p>` : `<div class="btn-row"><button class="btn btn-primary" data-act="im-here" data-id="${o.id}">${icon('pin')}I’m here</button><span class="tiny muted">Tap when you’re parked.</span></div>`) : ''}</section>`}
           ${amend ? `<section class="card amend-card"><div><h2 class="h3">${icon('edit')}Change toppings</h2><p class="small muted">You can tweak toppings and portions until we start preparing. Size, crust and price stay the same.</p></div><button class="btn btn-primary" data-act="amend-open" data-id="${o.id}">Edit toppings</button></section>` : ''}
           ${o.amendments.length ? `<section class="card"><h2 class="h3">Changes made</h2><ul class="amend-list">${o.amendments.map(a => `<li><strong>${esc(a.line)}</strong> · ${esc(M.fmtTime(a.at, o.tz))}<br><span class="muted">Before:</span> ${esc(a.before)}<br><span class="muted">After:</span> ${esc(a.after)} · ${money(a.charge)}</li>`).join('')}</ul></section>` : ''}
         </div>
@@ -390,11 +435,12 @@
           <section class="card"><h2 class="h3">Your order</h2>
             <ul class="mini-lines">${o.lines.map(l => `<li><span class="q">${l.qty}×</span><span>${esc(l.name)}${l.participant ? ` <small>· ${esc(l.participant)}</small>` : ''}${l.desc.length ? `<small>${esc(l.desc.join(' · '))}</small>` : ''}${l.note ? `<small>Note: ${esc(l.note)}</small>` : ''}</span><span>${money(l.total)}</span></li>`).join('')}</ul>
             <div class="totals">${totalsRows(o.totals, { mode: o.mode })}</div>
+            ${o.journey === 'member' && !o.canceled ? `<p class="earn">${icon('star')}<span>${o.pointsAwarded ? `<strong>${o.pointsEarned} pts</strong> earned` : `<strong>${o.pointsEstimate} pts</strong> will be added when this order is completed`}</span></p>` : ''}
             <div class="btn-row"><a class="btn btn-sm btn-outline" href="#/receipt/${o.id}">${icon('receipt')}Receipt</a><a class="btn btn-sm btn-ghost" href="#/support/${o.id}">${icon('help')}Get help</a>${s.done && !o.canceled ? `<a class="btn btn-sm btn-ghost" href="#/support/${o.id}#feedback">${icon('star')}${o.feedback ? 'Edit rating' : 'Rate order'}</a>` : ''}</div>
           </section>
           <section class="card"><h2 class="h3">Contact & notes</h2>
             <dl class="dl"><dt>Name</dt><dd>${esc(o.contact.name)}</dd><dt>Phone</dt><dd>${esc(o.contact.phone)}</dd><dt>Email</dt><dd>${esc(o.contact.email)}</dd>
-            ${o.address ? `<dt>Deliver to</dt><dd>${esc(o.address)}${o.instructions ? `<br><small>${esc(o.instructions)}</small>` : ''}</dd>` : ''}
+            ${o.address ? `<dt>Deliver to</dt><dd>${esc(o.address)}${o.instructions ? `<br><small>${esc(o.instructions)}</small>` : ''}${o.dropoff ? `<br><small>${esc(M.CONFIG.dropoffs[o.dropoff])}</small>` : ''}</dd>` : ''}
             <dt>Allergens</dt><dd>${o.allergens.length ? esc(o.allergens.join(', ')) : 'None noted'}</dd>${o.kitchenNote ? `<dt>Kitchen note</dt><dd>${esc(o.kitchenNote)}</dd>` : ''}</dl>
           </section>
           ${o.group ? `<section class="card"><h2 class="h3">${icon('users')}Group · ${esc(o.group.name)}</h2><p class="small muted">${esc(o.group.participants.join(', '))}</p></section>` : ''}
@@ -422,7 +468,7 @@
           <g transform="translate(344 66)"><circle r="11" class="pin-home"/><path d="M-5 1 0-4 5 1v5h-10z" fill="#fff"/></g>
           <g id="courier" class="courier"><circle r="13" class="cour-halo"/><circle r="8" class="cour-dot"/></g>
         </svg></div>
-      <div class="map-foot"><div>${icon('pin')}<span><strong>${esc(o.address)}</strong>${o.instructions ? `<br><small>${esc(o.instructions)}</small>` : ''}</span></div>
+      <div class="map-foot"><div>${icon('pin')}<span><strong>${esc(o.address)}</strong>${o.dropoff ? `<br><small>${esc(M.CONFIG.dropoffs[o.dropoff])}</small>` : ''}${o.instructions ? `<br><small>${esc(o.instructions)}</small>` : ''}${s.done && !o.canceled && o.dropoff === 'door' ? '<br><small>📷 Delivery photo saved (simulated)</small>' : ''}</span></div>
         <div class="btn-row"><a class="btn btn-sm btn-outline" href="tel:+12065550100">${icon('phone')}Delivery support</a><button class="btn btn-sm btn-ghost" data-act="chat-open" data-id="${o.id}">${icon('chat')}Chat</button></div></div>
     </section>`;
   }
@@ -452,7 +498,7 @@
         <header class="inv-head"><div class="logo-word">MOD<span>pizza</span></div><div class="inv-meta"><h2>Invoice</h2>
           <dl><dt>Invoice</dt><dd>${esc(o.invoice.id)}</dd><dt>Revision</dt><dd>${o.invoice.revision}</dd><dt>Order</dt><dd>${esc(o.id)}</dd><dt>Date</dt><dd>${esc(M.fmtDate(o.createdAt, o.tz))} ${esc(M.fmtTime(o.createdAt, o.tz))}</dd><dt>Status</dt><dd>${esc(s.label)}</dd></dl></div></header>
         <div class="inv-parties"><div><h3>Billed to</h3><p>${esc(o.contact.name)}<br>${esc(o.contact.email)}<br>${esc(o.contact.phone)}${o.address ? `<br>${esc(o.address)}` : ''}</p></div>
-          <div><h3>Store</h3><p>MOD ${esc(o.storeName)}<br>${esc(o.storeAddress)}<br>${o.mode === 'delivery' ? 'Delivery' : 'Pickup'}${o.schedule.type === 'later' ? ` · scheduled ${esc(M.fmtTime(o.schedule.slot, o.tz, { date: true }))}` : ''}</p></div></div>
+          <div><h3>Store</h3><p>MOD ${esc(o.storeName)}<br>${esc(o.storeAddress)}<br>${esc(methodOf(o))}${o.vehicle ? ` · ${esc(o.vehicle)}` : ''}${o.schedule.type === 'later' ? ` · scheduled ${esc(M.fmtTime(o.schedule.slot, o.tz, { date: true }))}` : ''}</p></div></div>
         <table class="inv-table"><thead><tr><th scope="col">Item</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Price</th><th scope="col" class="num">Total</th></tr></thead>
           <tbody>${o.lines.map(l => `<tr><td><strong>${esc(l.name)}</strong>${l.participant ? ` · ${esc(l.participant)}` : ''}${(l.recipe || l.desc).map(r => `<div class="inv-sub">${esc(r)}</div>`).join('')}${l.note ? `<div class="inv-sub">Note: ${esc(l.note)}</div>` : ''}</td><td class="num">${l.qty}</td><td class="num">${money(l.unit)}</td><td class="num">${money(l.total)}</td></tr>`).join('')}</tbody></table>
         <div class="inv-bottom"><div class="inv-notes">
@@ -521,8 +567,8 @@
   function memberGate(title) {
     return pageHead(title) + `<div class="gate card"><div class="gate-art">${U.pizzaSVG(M.defaultPizzaConfig(M.PROD['p-lucy']))}</div><div><span class="eyebrow">MOD Rewards</span><h2>Join to earn and redeem</h2>
       <p>Guests can order, track and get support without joining. Points, wallet funds, service credit, member coupons and the member pass are for members.</p>
-      <div class="btn-row"><button class="btn btn-primary" data-act="journey" data-j="member">Switch to sample member</button><button class="btn btn-outline" data-act="journey" data-j="member" data-go="#/join">Join (sample enrollment)</button></div>
-      <p class="tiny muted">This is a demo journey switch, not real authentication.</p></div></div>`;
+      <div class="btn-row"><a class="btn btn-primary" href="#/login">Sign in</a><a class="btn btn-outline" href="#/login?join=1">Join MOD Rewards</a></div>
+      <p class="tiny muted">Passwordless sign-in with a one-time code by email or text.</p></div></div>`;
   }
   V.memberGate = memberGate;
   V.rewards = function () {
@@ -558,12 +604,21 @@
             <div class="bonus"><div><strong>${esc(C.challenge.name)}</strong><small>Try ${C.challenge.need} different signature pizzas · +${C.challenge.points} pts</small>
               <div class="dots" aria-label="${ch.count} of ${C.challenge.need} complete">${Array.from({ length: C.challenge.need }, (_, i) => `<span class="${i < ch.count ? 'on' : ''}"></span>`).join('')}</div></div>
               ${j.claims.challenge ? pill('Claimed', 'pill-ok') : ch.count >= C.challenge.need ? `<button class="btn btn-sm btn-primary" data-act="claim" data-kind="challenge">Claim</button>` : `<span class="small muted">${ch.count}/${C.challenge.need}</span>`}</div>
-            <form class="bonus" data-form="receipt-claim"><div><label for="rc-code"><strong>Claim a missing receipt</strong></label><small>Sample code: ${C.receiptClaim.code} · once only</small>
-              <input id="rc-code" name="code" placeholder="Receipt code" ${j.claims.receipt ? 'disabled' : ''}></div>${j.claims.receipt ? pill('Claimed', 'pill-ok') : '<button class="btn btn-sm btn-outline" type="submit">Claim</button>'}</form>
           </section>
+          ${inStoreCard(j)}
         </aside></div>`;
   };
 
+  function inStoreCard(j) {
+    const n = (j.claims.receipts || []).length;
+    return `<section class="card instore" id="instore"><h2 class="h3">${icon('store')}Earn in store</h2>
+      <p class="small muted">Ordered at the counter? Show your member code before paying, or add your receipt afterwards (within ${M.CONFIG.receiptMaxAgeDays} days).</p>
+      <div class="instore-acts"><a class="instore-btn" href="#/pass">${icon('card')}<span><strong>Show member code</strong><small>Scan at the register</small></span></a>
+        <button class="instore-btn" data-act="scan-receipt">${icon('target')}<span><strong>Scan receipt</strong><small>Use your camera</small></span></button></div>
+      <form class="inline-form" data-form="receipt-claim"><label for="rc-code" class="sr-only">Receipt or loyalty code</label><input id="rc-code" name="code" placeholder="Enter receipt or loyalty code" autocomplete="off"><button class="btn btn-ink" type="submit">Add</button></form>
+      <p class="tiny muted">Try a sample: <code>RCPT-1600-55213</code> or <code>${M.CONFIG.receiptClaim.code}</code>${j.claims.receipt ? ' (used)' : ''}. ${n ? `${n} receipt${n > 1 ? 's' : ''} credited.` : ''}</p></section>`;
+  }
+  V.inStoreCard = inStoreCard;
   V.activity = function () {
     if (!M.isMember()) return memberGate('Activity');
     const j = M.J();
@@ -583,6 +638,8 @@
       <div class="two-col">
         <section class="card"><h2 class="h3">Top up</h2><p class="small muted">Choose an amount. A simulated card payment adds funds instantly.</p>
           <div class="chip-row big">${C.topUpPresets.map(a => `<button class="chip lg" data-act="topup" data-amt="${a}">${icon('plus')}${money(a)}</button>`).join('')}</div>
+          <form class="inline-form" data-form="topup-custom" novalidate><label for="tu-amt" class="sr-only">Custom amount in dollars</label><div class="money-in"><span aria-hidden="true">$</span><input id="tu-amt" name="amount" type="number" inputmode="decimal" min="${C.topUpMin / 100}" max="${C.topUpMax / 100}" step="0.01" placeholder="Other amount" aria-describedby="tu-help"></div><button class="btn btn-ink" type="submit">Top up</button></form>
+          <p class="tiny muted" id="tu-help">Custom amount: ${money(C.topUpMin)}–${money(C.topUpMax)}.</p>
           <h2 class="h3 mt">Redeem a gift card</h2>
           <form class="inline-form" data-form="giftcard"><label for="gc" class="sr-only">Gift card code</label><input id="gc" name="code" placeholder="Gift card code" ${j.claims.giftcard ? 'disabled' : ''}><button class="btn btn-ink" ${j.claims.giftcard ? 'disabled' : ''}>Redeem</button></form>
           <p class="tiny muted">${j.claims.giftcard ? 'Sample gift card already redeemed.' : `One-time sample code: ${C.sampleGiftCard.code} (${money(C.sampleGiftCard.amount)}). No real gift-card validation.`}</p></section>
@@ -597,7 +654,8 @@
       <div class="pass-wrap"><article class="pass"><div class="pass-top"><div class="logo-word light">MOD<span>rewards</span></div>${pill(esc(tier.name), 'pill-gold')}</div>
         <div class="pass-name">${esc(j.profile.name || 'Member')}</div><div class="pass-pts"><strong>${j.points.toLocaleString()}</strong> pts available</div>
         <div class="pass-code">${U.barcodeSVG(j.memberId)}<span>${esc(j.memberId)}</span></div>
-        <p class="pass-foot">${j.enrolled ? 'Enrolled member' : 'Sample rewards profile'} · Sample barcode for demonstration — not scannable.</p></article></div>`;
+        <p class="pass-foot">${j.enrolled ? 'Enrolled member' : 'Sample rewards profile'} · Sample barcode for demonstration — not scannable.</p></article>
+        <div class="btn-row center-row"><button class="btn btn-outline" data-act="scan-receipt">${icon('target')}Scan a receipt instead</button><a class="btn btn-ghost" href="#/rewards#instore">Enter a code</a></div></div>`;
   };
 
   /* ---------------- ACCOUNT ---------------- */
@@ -607,9 +665,10 @@
     const f = (id, label, type, val, extra = '') => `<div class="field ${fe['p-' + id] ? 'has-err' : ''}"><label for="p-${id}">${label}</label><input id="p-${id}" name="${id}" type="${type}" value="${attr(val || '')}" ${extra} ${fe['p-' + id] ? `aria-invalid="true" aria-describedby="p-${id}-e"` : ''}>${fe['p-' + id] ? `<p class="err" id="p-${id}-e">${esc(fe['p-' + id])}</p>` : ''}</div>`;
     const link = (href, ic, t, s) => `<a class="mini-link" href="${href}">${icon(ic)}<span><strong>${t}</strong><small>${s}</small></span>${icon('chevR')}</a>`;
     return `${pageHead('Account', member ? `${esc(p.name)} · ${j.enrolled ? 'Enrolled member' : 'Sample rewards profile'}` : 'Guest on this browser')}
-      <section class="journey-card card" aria-labelledby="jh"><div><h2 id="jh" class="h3">${icon('users')}Demo journey</h2><p class="small muted">Switch between a guest and the sample member to explore both experiences. This is not real sign-in. Your cart and scheduled time carry over; coupons, rewards and payment selections reset.</p></div>
-        <div class="seg" role="radiogroup" aria-label="Demo journey"><button class="seg-btn ${!member ? 'on' : ''}" role="radio" aria-checked="${!member}" data-act="journey" data-j="guest">${icon('user')}Guest</button><button class="seg-btn ${member ? 'on' : ''}" role="radio" aria-checked="${member}" data-act="journey" data-j="member">${icon('star')}Sample member</button></div>
-        ${sh.groupCheckout ? '<p class="small warn-text">Switching is blocked while a group checkout is locked.</p>' : ''}</section>
+      <section class="journey-card card" aria-labelledby="jh">${member
+        ? `<div class="avatar lg" aria-hidden="true">${esc((p.name || 'M').slice(0, 1))}</div><div><h2 id="jh" class="h3">Signed in</h2><p class="small muted">${esc(p.name)} · ${esc(j.signedInWith ? j.signedInWith.value : p.email)}</p></div><button class="btn btn-outline" data-act="sign-out">Sign out</button>`
+        : `<div class="avatar lg guest" aria-hidden="true">${icon('user')}</div><div><h2 id="jh" class="h3">You’re ordering as a guest</h2><p class="small muted">Sign in with a one-time code to earn points, use your wallet and see your go-to orders.</p></div><a class="btn btn-primary" href="#/login">Sign in</a>`}
+        ${sh.groupCheckout ? '<p class="small warn-text" style="flex-basis:100%">Signing in or out is blocked while a group checkout is locked.</p>' : ''}</section>
       <div class="two-col">
         <section class="card"><h2 class="h3">${member ? 'Profile' : 'Guest contact details'}</h2>
           <form data-form="profile" novalidate>
@@ -628,6 +687,36 @@
         </aside></div>`;
   };
 
+  V.login = function (q) {
+    const L = st.login || (st.login = { channel: 'email', step: 'enter', value: '', error: '' });
+    const otp = M.S.shared.otp;
+    if (M.isMember() && !q.join) return pageHead('You’re signed in', '', '#/account') + empty('check', `Welcome back, ${esc(M.J().profile.name.split(' ')[0] || '')}`, 'You’re signed in to MOD Rewards.', '<a class="btn btn-primary" href="#/">Go home</a> <button class="btn btn-outline" data-act="sign-out">Sign out</button>');
+    const onCode = L.step === 'code' && otp;
+    const chTab = (id, label, ic) => `<button type="button" role="tab" aria-selected="${L.channel === id}" class="seg-btn ${L.channel === id ? 'on' : ''}" data-act="login-channel" data-v="${id}" ${onCode ? 'disabled' : ''}>${icon(ic)}${label}</button>`;
+    const resendIn = otp ? Math.max(0, Math.ceil((otp.sentAt + M.CONFIG.otp.resendSec * 1000 - Date.now()) / 1000)) : 0;
+    const where = otp ? (otp.channel === 'email' ? otp.value : otp.value.replace(/\d(?=\d{4})/g, '•')) : '';
+    return `<div class="auth"><div class="auth-art" aria-hidden="true"><div class="auth-plate"><img src="${window.MOD_ASSETS || ''}custom.jpg" alt=""></div><div class="made-badge"><span>Made</span><strong>Your</strong><span>Way</span></div></div>
+      <section class="auth-card card">
+        <span class="eyebrow">${q.join ? 'Join MOD Rewards' : 'Sign in'}</span>
+        ${h1(onCode ? 'Enter your code' : q.join ? 'Create your account' : 'Welcome back')}
+        <p class="muted">${onCode ? `We sent a ${M.CONFIG.otp.length}-digit code to <strong>${esc(where)}</strong>.` : 'No password needed — we’ll send you a one-time code.'}</p>
+        ${!onCode ? `<div class="seg full" role="tablist" aria-label="Send code by">${chTab('email', 'Email', 'mail')}${chTab('sms', 'Text (SMS)', 'phone')}</div>
+          <form data-form="otp-request" novalidate class="auth-form"><div class="field ${L.error ? 'has-err' : ''}"><label for="login-id">${L.channel === 'email' ? 'Email address' : 'Mobile number'}</label>
+            <input id="login-id" name="id" type="${L.channel === 'email' ? 'email' : 'tel'}" inputmode="${L.channel === 'email' ? 'email' : 'tel'}" autocomplete="${L.channel === 'email' ? 'email' : 'tel'}" value="${attr(L.value)}" placeholder="${L.channel === 'email' ? 'you@example.com' : '(206) 555-0142'}" ${L.error ? 'aria-invalid="true" aria-describedby="login-err"' : ''} autofocus>
+            ${L.error ? `<p class="err" id="login-err">${esc(L.error)}</p>` : ''}</div>
+            <button class="btn btn-primary btn-lg btn-block" type="submit">Send code</button></form>
+          <p class="tiny muted">Sample member: <button type="button" class="link-btn" data-act="login-sample">${esc(M.S.journeys.member.profile.email)}</button>. Any other email or number signs you in and asks you to complete your profile.</p>`
+        : `<div class="sim-msg" role="note"><span class="sim-ico">${icon(otp.channel === 'email' ? 'mail' : 'chat')}</span><div><small>${otp.channel === 'email' ? 'Simulated email' : 'Simulated text message'} · MOD Pizza</small><span>Your MOD sign-in code is <strong data-testid="otp-code">${otp.code}</strong>. It expires in ${Math.round(M.CONFIG.otp.ttlSec / 60)} minutes.</span></div></div>
+          <form data-form="otp-verify" novalidate class="auth-form"><div class="field ${L.error ? 'has-err' : ''}"><label for="otp-in">${M.CONFIG.otp.length}-digit code</label>
+            <input id="otp-in" name="code" class="otp-input" inputmode="numeric" autocomplete="one-time-code" maxlength="${M.CONFIG.otp.length}" pattern="[0-9]*" data-input="otp" ${L.error ? 'aria-invalid="true" aria-describedby="otp-err"' : ''} autofocus>
+            ${L.error ? `<p class="err" id="otp-err">${esc(L.error)}</p>` : ''}</div>
+            <button class="btn btn-primary btn-lg btn-block" type="submit" id="otp-submit">Verify & sign in</button></form>
+          <div class="btn-row auth-row"><button type="button" class="btn btn-sm btn-ghost" data-act="otp-resend" ${resendIn ? `aria-disabled="true"` : ''}><span class="resend" data-until="${otp.sentAt + M.CONFIG.otp.resendSec * 1000}">${resendIn ? `Resend code in ${resendIn}s` : 'Resend code'}</span></button><button type="button" class="btn btn-sm btn-ghost" data-act="otp-change">Use a different ${otp.channel === 'email' ? 'email' : 'number'}</button></div>`}
+        <div class="auth-or"><span>or</span></div>
+        <a class="btn btn-outline btn-block" href="#/">Continue as guest</a>
+        <p class="tiny muted center">Prototype: codes are shown on screen instead of being sent. No account or password is created.</p>
+      </section></div>`;
+  };
   V.join = function () {
     if (!M.isMember()) return memberGate('Join MOD Rewards');
     const j = M.J(); const fe = st.fieldErrors || {};
