@@ -128,7 +128,7 @@
     main.innerHTML = html;
     tabbar.innerHTML = tabs(r);
     const cb = document.getElementById('cartbar'); if (cb) cb.innerHTML = cartBar(r);
-    if (APPMODE && changed && changedPath) { main.classList.remove('enter'); void main.offsetWidth; main.classList.add('enter'); }
+    if (changed && changedPath) { main.classList.remove('enter'); void main.offsetWidth; main.classList.add('enter'); } else main.classList.remove('enter');
     document.body.classList.toggle('participant-mode', !!participantInfo());
     document.body.dataset.route = r.parts[0] || 'home';
     document.title = `${TITLES[r.parts[0]] ? TITLES[r.parts[0]] + ' · ' : ''}MOD Pizza`;
@@ -208,7 +208,8 @@
   }
   function journeyDialog() {
     const j = M.J(); const p = j.profile;
-    const entry = U.openDialog({ title: 'Account', size: 'sm', body: `<div class="acct-head"><div class="avatar lg" aria-hidden="true">${esc((p.name || 'M').slice(0, 1))}</div><div><strong>${esc(p.name)}</strong><small>${j.points.toLocaleString()} pts · ${esc(M.tierOf(j).name)}</small></div></div>
+    const entry = U.openDialog({
+      title: 'Account', size: 'sm', body: `<div class="acct-head"><div class="avatar lg" aria-hidden="true">${esc((p.name || 'M').slice(0, 1))}</div><div><strong>${esc(p.name)}</strong><small>${j.points.toLocaleString()} pts · ${esc(M.tierOf(j).name)}</small></div></div>
       <nav class="mini-links" aria-label="Account">${[['#/rewards', 'star', 'Rewards'], ['#/wallet', 'wallet', `Wallet · ${money(j.wallet.gift)}`], ['#/pass', 'card', 'Member pass'], ['#/orders', 'receipt', 'Orders'], ['#/account', 'user', 'Account settings']].map(([h, ic, t]) => `<a class="mini-link" href="${h}">${icon(ic)}<span><strong>${t}</strong></span>${icon('chevR')}</a>`).join('')}</nav>
       <button class="btn btn-outline btn-block" style="margin-top:14px" data-act="sign-out">Sign out</button>` });
     return entry;
@@ -217,10 +218,12 @@
     const f = M.findOrder(id); if (!f) return;
     if (!M.canAmend(f.order)) { U.toast('We’ve started preparing this order — it can’t be canceled. Contact support for help.', 'err'); return; }
     const reasons = ['Ordered by mistake', 'Need to change items', 'Wrong time or location', 'Taking too long', 'Other'];
-    const entry = U.openDialog({ title: 'Cancel this order?', size: 'sm', body: `<p class="small">${esc(f.order.id)} · ${money(f.order.totals.total)}. You’ll get a full refund to your original payment${f.journey === 'member' ? ', and any points, wallet funds or service credit used will be restored' : ''}. This can’t be undone.</p>
+    const entry = U.openDialog({
+      title: 'Cancel this order?', size: 'sm', body: `<p class="small">${esc(f.order.id)} · ${money(f.order.totals.total)}. You’ll get a full refund to your original payment${f.journey === 'member' ? ', and any points, wallet funds or service credit used will be restored' : ''}. This can’t be undone.</p>
       <fieldset class="radio-cards"><legend>Reason</legend>${reasons.map((r, i) => `<label class="rcard"><input type="radio" name="cr" value="${esc(r)}" ${i === 0 ? 'checked' : ''}><span>${esc(r)}</span></label>`).join('')}</fieldset>
       <div class="field" id="cr-other" hidden><label for="cr-note">Tell us more</label><textarea id="cr-note" rows="3" maxlength="300" placeholder="What made you cancel?" aria-describedby="cr-err"></textarea><p class="err" id="cr-err" hidden></p></div>`,
-      footer: '<button class="btn btn-ghost" data-dlg-close>Keep order</button><button class="btn btn-primary" id="co-yes">Cancel order</button>' });
+      footer: '<button class="btn btn-ghost" data-dlg-close>Keep order</button><button class="btn btn-primary" id="co-yes">Cancel order</button>'
+    });
     const other = entry.dlg.querySelector('#cr-other'), note = entry.dlg.querySelector('#cr-note'), err = entry.dlg.querySelector('#cr-err');
     entry.dlg.addEventListener('change', (e) => { if (e.target.name !== 'cr') return; const isOther = e.target.value === 'Other'; other.hidden = !isOther; if (isOther) note.focus(); else { err.hidden = true; note.removeAttribute('aria-invalid'); } });
     entry.dlg.querySelector('#co-yes').addEventListener('click', () => {
@@ -596,7 +599,23 @@
   function liveRoute() { const a = (parseHash().parts[0]) || 'home'; return ['order', 'orders', 'home', 'group', 'support', 'rewards'].includes(a); }
   function typing() { const ae = document.activeElement; return ae && main.contains(ae) && /INPUT|TEXTAREA|SELECT/.test(ae.tagName); }
   function safeRender() { if (typing() || U.topDialog()) { pendingRender = true; return; } render(); }
-  setInterval(() => { const changed = M.tick(); if (changed || liveRoute()) safeRender(); }, 4000);
+  // Live refresh: only re-render when something the current screen shows has actually changed.
+  function liveSig() {
+    const r = parseHash(); const a = r.parts[0] || 'home'; const now = Date.now();
+    const os = M.J().orders.map(o => { const s = M.stageOf(o, now); return o.id + s.id + (o.refund ? o.refund.status : '') + (o.pointsAwarded ? 1 : 0) + (o.arrived ? 1 : 0); }).join('|');
+    let extra = '';
+    if (a === 'order') { const f = M.findOrder(r.parts[1]); if (f) { const s = M.stageOf(f.order, now); if (s.id === 'out' && s.start) extra = Math.floor((now - s.start) / 6000); } }
+    if (a === 'login' && M.S.shared.otp) extra = M.S.shared.otp.expires > now ? 'live' : 'expired';
+    return a + ':' + os + ':' + M.J().points + ':' + extra;
+  }
+  let lastSig = null;
+  setInterval(() => {
+    const changed = M.tick();
+    if (!liveRoute()) { lastSig = null; return; }
+    const sig = liveSig();
+    if (lastSig === null) { lastSig = sig; if (!changed) return; }
+    if (changed || sig !== lastSig) { lastSig = sig; safeRender(); }
+  }, 4000);
   setInterval(updateCountdowns, 1000);
   setInterval(() => { if (!participantInfo()) { try { localStorage.setItem(BEAT, String(Date.now())); } catch (e) { /* ignore */ } } }, 3000);
   if (!participantInfo()) { try { localStorage.setItem(BEAT, String(Date.now())); } catch (e) { /* ignore */ } }
