@@ -1,0 +1,42 @@
+/* Version 3 "Modern" — native app shell (styling only). */
+html.app { --tab: 76px; }
+html.app .app-header { position: sticky; top: 0; padding: 0; background: rgba(247, 243, 238, .82) !important; backdrop-filter: saturate(1.8) blur(20px); -webkit-backdrop-filter: saturate(1.8) blur(20px); box-shadow: 0 1px 0 rgba(23, 17, 15, .06) !important; }
+html.app .abar { height: 56px; }
+.abar-t { font-family: var(--display) !important; font-weight: 400 !important; font-size: 22px !important; letter-spacing: -.02em; }
+html.app.p-android .abar-t { font-family: var(--display) !important; font-size: 24px !important; }
+.abar-back { color: var(--ink) !important; font-weight: 600; }
+.abar-ico .badge { background: var(--red) !important; border-color: var(--paper) !important; }
+html.app main { padding-top: 14px; }
+html.app .tabbar { left: 12px !important; right: 12px !important; bottom: calc(10px + var(--sab)) !important; border: 0 !important; border-radius: 26px; padding: 8px 6px !important; background: rgba(23, 17, 15, .9) !important; backdrop-filter: blur(20px); box-shadow: 0 20px 40px -16px rgba(23, 17, 15, .6); max-width: 536px; }
+html.app .tabbar a { color: rgba(255, 255, 255, .55) !important; }
+html.app .tabbar a.on { color: #fff !important; }
+html.app .tabbar a.on .ico { color: #ff5470; background: none !important; }
+html.app.p-android .tabbar a.on .ico { background: rgba(255, 255, 255, .12) !important; color: #fff; }
+#cartbar { bottom: calc(var(--tab) + var(--sab) + 16px) !important; }
+.cart-bar { background: linear-gradient(180deg, #d6213d, var(--red)); border-radius: 22px; padding: 14px 18px; box-shadow: 0 18px 36px -14px rgba(196, 18, 47, .8); }
+.cb-n { background: rgba(255, 255, 255, .22); border-radius: 10px; }
+html.app .menu-bar { top: 56px; border-radius: 0; margin: 0 -16px 10px; box-shadow: 0 1px 0 var(--line); }
+html.app .hero { margin: 0; border-radius: 30px; }
+html.app .pcard { flex-direction: row; border-radius: 24px; }
+html.app .pcard-art { width: 124px; margin: 8px 0 8px 8px; border-radius: 18px; aspect-ratio: 1; }
+html.app .pcard:hover { transform: none; }
+html.app .dlg { border-radius: 30px 30px 0 0; }
+.n-splash { background: radial-gradient(120% 90% at 50% 100%, #5a1623 0%, var(--ink) 60%) !important; }
+.sp-mark { background: #fff; border-radius: 34px; padding: 22px; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .7); }
+.sp-dots span { background: #fff; }
+.n-onboard { background: var(--paper); }
+.ob-photo { box-shadow: 0 0 0 20px var(--cream), 0 50px 80px -30px rgba(23, 17, 15, .55); }
+.ob-copy h2 { font-family: var(--display); font-weight: 400; font-size: 46px; letter-spacing: -.03em; line-height: 1; }
+.ob-card { border-radius: 30px; box-shadow: var(--shadow-lg); }
+.ob-card.dark { background: radial-gradient(130% 120% at 0% 0%, #5a1623 0%, var(--ink) 60%); }
+.ob-pts { font-family: var(--display); font-weight: 400; font-size: 56px; }
+.ob-dots span.on { background: var(--ink); }
+.perm-card { border-radius: 30px; box-shadow: var(--shadow-lg); }
+.perm-ico { background: var(--sand); color: var(--ink); border-radius: 18px; }
+.push { border-radius: 22px; background: rgba(255, 255, 255, .86) !important; backdrop-filter: blur(24px); box-shadow: 0 20px 40px -18px rgba(23, 17, 15, .5); }
+.push-ico { background: var(--ink); }
+html.app h1 { font-size: 44px; }
+html.app .hero h1 { font-size: 56px; line-height: .92; }
+html.app .b-head h1 { font-size: 46px; }
+html.app .b-foot { background: var(--paper) !important; box-shadow: 0 -10px 24px -16px rgba(23, 17, 15, .25); bottom: calc(var(--tab) + var(--sab) + 6px); }
+html.app .b-foot { bottom: 0 !important; padding-bottom: calc(var(--tab) + var(--sab) + 26px) !important; margin-bottom: calc(-1 * (var(--tab) + var(--sab) + 26px)); }
