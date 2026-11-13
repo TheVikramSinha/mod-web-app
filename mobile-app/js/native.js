@@ -43,12 +43,10 @@
   /* ---------- Onboarding ---------- */
   const SLIDES = [
     { t: 'Made your way', d: 'Pile on unlimited toppings, split it half and half, and save your favourite builds.', art: 'photo' },
-    { t: 'Follow every step', d: 'Live order status, scheduled pickup or delivery, and alerts when it’s ready.', art: 'track' },
     { t: 'Earn as you eat', d: 'Points on every order, a free pizza at 1,500 points, plus a digital wallet and member pass.', art: 'rewards' }
   ];
   function slideArt(a) {
     if (a === 'photo') return `<div class="ob-photo"><img src="assets/custom.jpg" alt="" width="800" height="800"><span class="made-badge sm"><span>Made</span><strong>Your</strong><span>Way</span></span></div>`;
-    if (a === 'track') return `<div class="ob-card"><div class="ob-row"><span class="pulse"></span><strong>In the oven</strong></div><div class="ob-steps"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div><small>Ready at 7:42 PM</small></div>`;
     return `<div class="ob-card dark"><small>MOD Rewards · Silver</small><strong class="ob-pts">1,240 pts</strong><div class="ob-meter"><span style="width:82%"></span></div><small>260 pts to a free pizza</small></div>`;
   }
   function onboarding() {
