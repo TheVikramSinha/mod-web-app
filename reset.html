@@ -27,7 +27,7 @@
 </head>
 <body>
   <main class="card">
-    <span class="brand">MOD</span>
+    <img src="https://upload.wikimedia.org/wikipedia/en/thumb/2/2b/MOD_Pizza_logo.svg/960px-MOD_Pizza_logo.svg.png" alt="MOD Pizza" width="56" height="54" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=brand>MOD</span>'">
     <h1>Reset test data</h1>
     <p>Clears carts, orders, groups, addresses, rewards activity and settings saved by the prototypes in this browser. The sample member and sample orders come back on next launch.</p>
     <form id="f">
@@ -41,7 +41,7 @@
   </main>
   <script>
     // Storage prefixes used by the prototypes.
-    const GROUPS = { web: ['modproto.v1.', 'modproto.mobile.v1.'], app: ['modapp.v1.'] };
+    const GROUPS = { web: ['modproto.v1.', 'modproto.mobile.v1.', 'modproto.v2.', 'modproto.mobile.v2.'], app: ['modapp.v1.', 'modapp.v2.'] };
     const keysFor = (g) => { try { return Object.keys(localStorage).filter(k => GROUPS[g].some(p => k.startsWith(p))); } catch (e) { return null; } };
     function count() {
       ['web', 'app'].forEach(g => {

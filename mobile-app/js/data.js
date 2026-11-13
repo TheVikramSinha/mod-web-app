@@ -14,14 +14,21 @@
       { id: 'gold', name: 'Gold', min: 6000, mult: 1.5 }
     ],
     pizzaRewardCost: 1500,
+    saladSizes: [
+      { id: 'mini', name: 'MINI', sub: 'Side', adj: -300 },
+      { id: 'mod', name: 'MOD', sub: 'Entrée', adj: 0 },
+      { id: 'mega', name: 'MEGA', sub: 'Family size', adj: 600 }
+    ],
+    logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2b/MOD_Pizza_logo.svg/960px-MOD_Pizza_logo.svg.png',
     sizes: [
-      { id: 'small', name: 'Small', inch: '9"', adj: -200 },
-      { id: 'regular', name: 'Regular', inch: '11"', adj: 0 },
-      { id: 'mega', name: 'Mega', inch: '11" · double dough', adj: 400 }
+      { id: 'small', name: 'Mini', inch: '6"', adj: -300 },
+      { id: 'regular', name: 'MOD', inch: '11"', adj: 0 },
+      { id: 'mega', name: 'MEGA', inch: '11" thick crust', adj: 300 }
     ],
     crusts: [
-      { id: 'original', name: 'Original', adj: 0 },
-      { id: 'cauli', name: 'Cauliflower', adj: 300 }
+      { id: 'original', name: 'Thin', adj: 0 },
+      { id: 'cauli', name: 'Cauliflower', adj: 300 },
+      { id: 'gf', name: 'Gluten-friendly', adj: 300 }
     ],
     deliveryLeadMin: 20,
     closingBufferMin: 30,
@@ -40,9 +47,17 @@
     receiptMaxAgeDays: 30,
     otp: { length: 6, ttlSec: 300, resendSec: 30, maxAttempts: 5 },
     topUpMin: 500, topUpMax: 50000,
+    allergens: ['Milk', 'Eggs', 'Wheat', 'Soy', 'Peanuts', 'Tree nuts', 'Sesame', 'Fish', 'Shellfish'],
+    diets: [
+      { id: 'vegetarian', name: 'Vegetarian', desc: 'No meat or fish' },
+      { id: 'vegan', name: 'Vegan', desc: 'No animal products' },
+      { id: 'dairy-free', name: 'Dairy-free', desc: 'No cheese or dairy sauces' },
+      { id: 'no-pork', name: 'No pork', desc: 'No pepperoni, sausage, ham, bacon or salami' },
+      { id: 'gluten-conscious', name: 'Gluten-conscious', desc: 'Prefer cauliflower crust' }
+    ],
     pickupMethods: { instore: 'In-store pickup', curbside: 'Curbside pickup', drivethru: 'Drive-thru' },
     dropoffs: { door: 'Leave at door', hand: 'Hand it to me' },
-    popularDefault: ['p-maddog', 'p-cyo', 'p-garden', 'p-caspian', 'd-garlic', 'x-nonamecake', 's-italian', 'b-lemonade'],
+    popularDefault: ['p-ogpep', 'p-cyo', 'p-carnivore', 'p-firebird', 'x-nonamecake', 's-italian', 'd-garlic', 'b-lemonade'],
     profileBonus: 100,
     challenge: { id: 'explore3', name: 'Pizza Explorer', need: 3, points: 250 }
   };
@@ -50,79 +65,109 @@
   const STORES = [
     { id: 's1', lat: 47.6151, lng: -122.3270, name: 'Capitol Hill', city: 'Seattle, WA', address: '1302 Pine St, Seattle, WA 98101', tz: 'America/Los_Angeles',
       open: 540, close: 1440, modes: ['pickup', 'delivery'], deliveryFee: 399, prepMin: 15, priceFactor: 1, accepting: true,
-      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'curbside', 'drivethru'], popular: ['p-maddog', 'p-cyo', 'p-caspian', 'd-garlic', 'x-nonamecake', 'b-lemonade'], pickupNote: 'Pickup shelf is left of the ordering counter. Show your order name or number.' },
+      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'curbside', 'drivethru'], popular: ['p-ogpep', 'p-cyo', 'p-firebird', 'p-pesto', 'x-nonamecake', 'b-lemonade'], pickupNote: 'Pickup shelf is left of the ordering counter. Show your order name or number.' },
     { id: 's2', lat: 47.6157, lng: -122.2036, name: 'Bellevue Square', city: 'Bellevue, WA', address: '575 Bellevue Sq, Bellevue, WA 98004', tz: 'America/Los_Angeles',
       open: 600, close: 1320, modes: ['pickup', 'delivery'], deliveryFee: 299, prepMin: 20, priceFactor: 1, accepting: true,
-      outProducts: ['p-tristan'], outIngredients: ['artichoke'], pickupMethods: ['instore', 'curbside'], popular: ['p-maddy', 'p-garden', 'p-cyo', 's-caesar', 'x-cakepop', 'b-tea'], pickupNote: 'Mall level 2 food hall. Use the MOD pickup counter by the register.' },
+      outProducts: ['p-pesto'], outIngredients: ['artichoke'], pickupMethods: ['instore', 'curbside'], popular: ['p-maddy', 'p-vegout', 'p-cyo', 's-caesar', 'x-cinnamod', 'b-tea'], pickupNote: 'Mall level 2 food hall. Use the MOD pickup counter by the register.' },
     { id: 's3', lat: 39.7527, lng: -105.0002, name: 'LoDo', city: 'Denver, CO', address: '1600 Wynkoop St, Denver, CO 80202', tz: 'America/Denver',
       open: 630, close: 1410, modes: ['pickup', 'delivery'], deliveryFee: 349, prepMin: 15, priceFactor: 1.05, accepting: true,
-      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'drivethru'], popular: ['p-dominic', 'p-maddog', 'p-lucy', 'd-cheesy', 'x-cinnamon', 'b-rootbeer'], pickupNote: 'Walk in and grab your order from the heated pickup rack.' },
+      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'drivethru'], popular: ['p-carnivore', 'p-smoke', 'p-modgherita', 'd-garlic', 'x-cinnamod', 'b-fountain'], pickupNote: 'Walk in and grab your order from the heated pickup rack.' },
     { id: 's4', lat: 41.8843, lng: -87.6551, name: 'West Loop', city: 'Chicago, IL', address: '1100 W Randolph St, Chicago, IL 60607', tz: 'America/Chicago',
       open: 660, close: 1380, modes: ['pickup', 'delivery'], deliveryFee: 449, prepMin: 18, priceFactor: 1.08, accepting: true,
-      outProducts: ['s-greek'], outIngredients: ['bacon'], pickupMethods: ['instore'], popular: ['p-maddog', 'p-caspian', 'p-one', 'd-bites', 'x-nonamecake', 'b-lemonade'], pickupNote: 'Pickup counter is at the end of the make line.' },
+      outProducts: ['s-med'], outIngredients: ['bacon'], pickupMethods: ['instore'], popular: ['p-legend', 'p-carnivore', 'p-ogpep', 'd-strips', 'x-nonamecake', 'b-lemonade'], pickupNote: 'Pickup counter is at the end of the make line.' },
     { id: 's5', lat: 30.2496, lng: -97.7497, name: 'South Congress', city: 'Austin, TX', address: '1500 S Congress Ave, Austin, TX 78704', tz: 'America/Chicago',
       open: 600, close: 1320, modes: ['pickup'], deliveryFee: null, prepMin: 15, priceFactor: 0.98, accepting: true,
-      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'curbside', 'drivethru'], popular: ['p-garden', 'p-cyo', 'p-lucy', 's-garden', 'x-cookie', 'b-tea'], pickupNote: 'Pickup only at this location. Shelf by the front window.' },
+      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'curbside', 'drivethru'], popular: ['p-vegout', 'p-cyo', 'p-aloha', 's-garden', 'x-nonamecake', 'b-tea'], pickupNote: 'Pickup only at this location. Shelf by the front window.' },
     { id: 's6', lat: 40.7356, lng: -73.9925, name: 'Union Square', city: 'New York, NY', address: '30 E 14th St, New York, NY 10003', tz: 'America/New_York',
       open: 660, close: 1380, modes: ['pickup', 'delivery'], deliveryFee: 499, prepMin: 20, priceFactor: 1.12, accepting: false,
-      pausedReason: 'Online ordering is paused at this store right now.', outProducts: [], outIngredients: [], pickupMethods: ['instore'], popular: ['p-maddog', 'p-cyo', 'p-maddy', 'd-garlic', 'x-nonamecake', 'b-water'], pickupNote: 'Pickup at the front counter.' }
+      pausedReason: 'Online ordering is paused at this store right now.', outProducts: [], outIngredients: [], pickupMethods: ['instore'], popular: ['p-ogpep', 'p-cyo', 'p-maddy', 'd-garlic', 'x-nonamecake', 'b-water'], pickupNote: 'Pickup at the front counter.' }
   ];
 
-  // type: sauce | cheese | meat | veggie | salad | dressing | greens
+  // type: sauce | cheese | meat | veggie | finish | salad | dressing | greens  (names follow MOD's published menu)
   const INGREDIENTS = [
     { id: 'tomato-sauce', name: 'Tomato', type: 'sauce', color: '#d63b2a', diet: 'vegan' },
-    { id: 'white-sauce', name: 'White sauce', type: 'sauce', color: '#f3ead6', diet: 'veg' },
-    { id: 'buffalo-sauce', name: 'Buffalo', type: 'sauce', color: '#e66a1f', diet: 'veg' },
+    { id: 'spicy-tomato', name: 'Spicy tomato', type: 'sauce', color: '#b8291b', diet: 'vegan' },
+    { id: 'white-sauce', name: 'Creamy alfredo', type: 'sauce', color: '#f3ead6', diet: 'veg' },
+    { id: 'bbq-sauce', name: 'BBQ', type: 'sauce', color: '#7a2e14', diet: 'vegan' },
+    { id: 'buffalo-sauce', name: 'Frank’s Buffalo', type: 'sauce', color: '#e66a1f', diet: 'veg' },
+    { id: 'pesto-sauce', name: 'Pesto', type: 'sauce', color: '#5d8f2f', diet: 'veg' },
+    { id: 'garlic-rub', name: 'Garlic rub', type: 'sauce', color: '#efdca6', diet: 'vegan' },
+    { id: 'olive-oil', name: 'Olive oil', type: 'sauce', color: '#d8c35a', diet: 'vegan' },
     { id: 'no-sauce', name: 'No sauce', type: 'sauce', color: null, diet: 'vegan' },
 
     { id: 'mozzarella', name: 'Mozzarella', type: 'cheese', color: '#fff3c4', diet: 'veg' },
-    { id: 'vegan-mozz', name: 'Vegan mozzarella', type: 'cheese', color: '#fff8e0', diet: 'vegan' },
+    { id: 'asiago', name: 'Asiago', type: 'cheese', color: '#f4e1a6', diet: 'veg' },
     { id: 'parmesan', name: 'Parmesan', type: 'cheese', color: '#f5e7b0', diet: 'veg' },
+    { id: 'cheddar', name: 'Cheddar', type: 'cheese', color: '#f0b23c', diet: 'veg' },
     { id: 'feta', name: 'Feta', type: 'cheese', color: '#ffffff', diet: 'veg' },
     { id: 'gorgonzola', name: 'Gorgonzola', type: 'cheese', color: '#dfe7d7', diet: 'veg' },
     { id: 'ricotta', name: 'Ricotta', type: 'cheese', color: '#fffdf5', diet: 'veg' },
+    { id: 'vegan-mozz', name: 'Plant-based cheese', type: 'cheese', color: '#fff8e0', diet: 'vegan' },
 
     { id: 'pepperoni', name: 'Pepperoni', type: 'meat', color: '#b3261e', shape: 'disc', diet: 'nonveg' },
     { id: 'sausage', name: 'Italian sausage', type: 'meat', color: '#7a4b32', shape: 'blob', diet: 'nonveg' },
-    { id: 'ham', name: 'Ham', type: 'meat', color: '#e59a9a', shape: 'square', diet: 'nonveg' },
+    { id: 'ground-beef', name: 'Ground beef', type: 'meat', color: '#5e3a24', shape: 'blob', diet: 'nonveg' },
     { id: 'bacon', name: 'Bacon', type: 'meat', color: '#a23b2a', shape: 'strip', diet: 'nonveg' },
-    { id: 'chicken', name: 'Roasted chicken', type: 'meat', color: '#d9b48a', shape: 'square', diet: 'nonveg' },
+    { id: 'canadian-bacon', name: 'Canadian bacon', type: 'meat', color: '#e59a9a', shape: 'disc', diet: 'nonveg' },
+    { id: 'chicken', name: 'Grilled chicken', type: 'meat', color: '#d9b48a', shape: 'square', diet: 'nonveg' },
+    { id: 'spicy-chicken-sausage', name: 'Spicy chicken sausage', type: 'meat', color: '#a0522d', shape: 'blob', diet: 'nonveg' },
     { id: 'salami', name: 'Salami', type: 'meat', color: '#a8323e', shape: 'disc', diet: 'nonveg' },
+    { id: 'anchovies', name: 'Anchovies', type: 'meat', color: '#7d6e60', shape: 'strip', diet: 'nonveg' },
+    { id: 'plant-sausage', name: 'Plant-based sausage', type: 'meat', color: '#8a6345', shape: 'blob', diet: 'vegan' },
 
     { id: 'mushroom', name: 'Mushrooms', type: 'veggie', color: '#b49a7d', shape: 'half', diet: 'vegan' },
     { id: 'red-onion', name: 'Red onion', type: 'veggie', color: '#9c4a8b', shape: 'ring', diet: 'vegan' },
     { id: 'green-pepper', name: 'Green peppers', type: 'veggie', color: '#3f8f3a', shape: 'strip', diet: 'vegan' },
     { id: 'roasted-red-pepper', name: 'Roasted red peppers', type: 'veggie', color: '#d5432c', shape: 'strip', diet: 'vegan' },
     { id: 'jalapeno', name: 'Jalapeños', type: 'veggie', color: '#4c9a2a', shape: 'ring', diet: 'vegan' },
+    { id: 'peppas', name: 'Mama Lil’s sweet hot peppas', type: 'veggie', color: '#e05a2a', shape: 'strip', diet: 'vegan' },
     { id: 'olive', name: 'Black olives', type: 'veggie', color: '#2b2b2b', shape: 'ring', diet: 'vegan' },
     { id: 'spinach', name: 'Spinach', type: 'veggie', color: '#2f7d32', shape: 'leaf', diet: 'vegan' },
     { id: 'tomato', name: 'Tomatoes', type: 'veggie', color: '#e2412f', shape: 'disc', diet: 'vegan' },
     { id: 'garlic', name: 'Roasted garlic', type: 'veggie', color: '#f1dfb0', shape: 'blob', diet: 'vegan' },
+    { id: 'garlic-chopped', name: 'Chopped garlic', type: 'veggie', color: '#f7ecc8', shape: 'blob', diet: 'vegan' },
     { id: 'basil', name: 'Basil', type: 'veggie', color: '#2e8b3d', shape: 'leaf', diet: 'vegan' },
+    { id: 'cilantro', name: 'Cilantro', type: 'veggie', color: '#3b9a3b', shape: 'leaf', diet: 'vegan' },
+    { id: 'oregano', name: 'Oregano', type: 'veggie', color: '#6b8e3a', shape: 'leaf', diet: 'vegan' },
     { id: 'pineapple', name: 'Pineapple', type: 'veggie', color: '#f4c430', shape: 'square', diet: 'vegan' },
     { id: 'artichoke', name: 'Artichokes', type: 'veggie', color: '#8aa35b', shape: 'half', diet: 'vegan' },
     { id: 'arugula', name: 'Arugula', type: 'veggie', color: '#4f8f2f', shape: 'leaf', diet: 'vegan' },
+    { id: 'broccoli', name: 'Roasted broccoli', type: 'veggie', color: '#3e7d2a', shape: 'blob', diet: 'vegan' },
+    { id: 'corn', name: 'Roasted corn', type: 'veggie', color: '#f2c94c', shape: 'blob', diet: 'vegan' },
+    { id: 'chili-flakes', name: 'Red pepper flakes', type: 'veggie', color: '#c62d1c', shape: 'blob', diet: 'vegan' },
+
+    { id: 'fig-glaze', name: 'Balsamic fig glaze', type: 'finish', color: '#4a1f24', shape: 'drizzle', diet: 'vegan' },
+    { id: 'hot-honey', name: 'Mike’s Hot Honey', type: 'finish', color: '#d9952b', shape: 'drizzle', diet: 'veg' },
+    { id: 'buffalo-finish', name: 'Hot buffalo', type: 'finish', color: '#e66a1f', shape: 'drizzle', diet: 'veg' },
+    { id: 'bbq-finish', name: 'BBQ', type: 'finish', color: '#7a2e14', shape: 'drizzle', diet: 'vegan' },
+    { id: 'pesto-finish', name: 'Pesto', type: 'finish', color: '#5d8f2f', shape: 'drizzle', diet: 'veg' },
+    { id: 'ranch-finish', name: 'Ranch', type: 'finish', color: '#f7f2e6', shape: 'drizzle', diet: 'veg' },
+    { id: 'sriracha', name: 'Sriracha', type: 'finish', color: '#d6301e', shape: 'drizzle', diet: 'vegan' },
+    { id: 'sriracha-ranch', name: 'Sriracha ranch', type: 'finish', color: '#f0a07a', shape: 'drizzle', diet: 'veg' },
 
     { id: 'romaine', name: 'Romaine', type: 'greens', diet: 'vegan' },
-    { id: 'arugula-g', name: 'Arugula', type: 'greens', diet: 'vegan' },
     { id: 'mixed', name: 'Mixed greens', type: 'greens', diet: 'vegan' },
+    { id: 'arugula-g', name: 'Arugula', type: 'greens', diet: 'vegan' },
 
     { id: 'caesar', name: 'Caesar', type: 'dressing', diet: 'veg' },
     { id: 'balsamic', name: 'Balsamic vinaigrette', type: 'dressing', diet: 'vegan' },
+    { id: 'champagne', name: 'Champagne vinaigrette', type: 'dressing', diet: 'vegan' },
+    { id: 'oil-vinegar', name: 'Olive oil & red wine vinegar', type: 'dressing', diet: 'vegan' },
     { id: 'ranch', name: 'Ranch', type: 'dressing', diet: 'veg' },
     { id: 'no-dressing', name: 'No dressing', type: 'dressing', diet: 'vegan' },
 
-    { id: 'cucumber', name: 'Cucumber', type: 'salad', diet: 'vegan' },
+    { id: 'cucumber', name: 'Cucumbers', type: 'salad', diet: 'vegan' },
     { id: 'chickpeas', name: 'Chickpeas', type: 'salad', diet: 'vegan' },
     { id: 'croutons', name: 'Croutons', type: 'salad', diet: 'vegan' },
     { id: 'pepperoncini', name: 'Pepperoncini', type: 'salad', diet: 'vegan' }
   ];
 
-  const SALAD_TOPPINGS = ['tomato', 'cucumber', 'red-onion', 'olive', 'chickpeas', 'croutons', 'pepperoncini', 'feta', 'parmesan', 'salami', 'chicken'];
-  const PIZZA_TOPPINGS = ['pepperoni', 'sausage', 'ham', 'bacon', 'chicken', 'salami', 'mushroom', 'red-onion', 'green-pepper', 'roasted-red-pepper',
-    'jalapeno', 'olive', 'spinach', 'tomato', 'garlic', 'basil', 'pineapple', 'artichoke', 'arugula'];
-  const CHEESES = ['mozzarella', 'vegan-mozz', 'parmesan', 'feta', 'gorgonzola', 'ricotta'];
-  const SAUCES = ['tomato-sauce', 'white-sauce', 'buffalo-sauce', 'no-sauce'];
+  const SALAD_TOPPINGS = ['tomato', 'cucumber', 'red-onion', 'olive', 'green-pepper', 'roasted-red-pepper', 'chickpeas', 'croutons', 'pepperoncini', 'oregano', 'mozzarella', 'asiago', 'feta', 'parmesan', 'salami', 'chicken', 'bacon'];
+  const PIZZA_TOPPINGS = ['pepperoni', 'sausage', 'ground-beef', 'bacon', 'canadian-bacon', 'chicken', 'spicy-chicken-sausage', 'salami', 'anchovies', 'plant-sausage',
+    'mushroom', 'red-onion', 'green-pepper', 'roasted-red-pepper', 'jalapeno', 'peppas', 'olive', 'spinach', 'tomato', 'garlic', 'garlic-chopped', 'basil', 'cilantro', 'oregano', 'pineapple', 'artichoke', 'arugula', 'broccoli', 'corn', 'chili-flakes'];
+  const FINISHES = ['fig-glaze', 'hot-honey', 'buffalo-finish', 'bbq-finish', 'pesto-finish', 'ranch-finish', 'sriracha', 'sriracha-ranch'];
+  const CHEESES = ['mozzarella', 'asiago', 'parmesan', 'cheddar', 'feta', 'gorgonzola', 'ricotta', 'vegan-mozz'];
+  const SAUCES = ['tomato-sauce', 'spicy-tomato', 'white-sauce', 'bbq-sauce', 'buffalo-sauce', 'pesto-sauce', 'garlic-rub', 'olive-oil', 'no-sauce'];
 
   const CATEGORIES = [
     { id: 'pizzas', name: 'Pizzas', icon: 'pizza' },
@@ -134,74 +179,86 @@
     { id: 'extras', name: 'Extras', icon: 'extra' }
   ];
 
+  // Product photos are loaded from modpizza.com (optimized CDN first, original upload as fallback, drawn art if both fail).
+  const IMG_CDN = 'https://modpizza.com/nitropack_static/PcYrRCpGOqYGuuuJnjXRulqHDScUwpeM/assets/images/optimized/rev-a345840/modpizza.com/wp-content/uploads/';
+  const IMG_ORIG = 'https://modpizza.com/wp-content/uploads/';
+  const img = (path) => ({ img: IMG_CDN + path, imgFallback: IMG_ORIG + path });
+
   const n = (cal, fat, carbs, protein, sodium) => ({ cal, fat, carbs, protein, sodium });
   const pz = (sauce, items) => ({ sauce, items }); // items: ingredient ids at Regular / Whole
 
   const PRODUCTS = [
-    // Pizzas
-    { id: 'p-cyo', cat: 'pizzas', name: 'Create Your Own', desc: 'Start with tomato and mozzarella, then pile on anything — toppings included. Supports independent half-and-half recipes.',
-      price: 1197, diet: 'veg', builder: 'pizza', custom: true, splitAllowed: true, recipe: pz('tomato-sauce', ['mozzarella']), nutrition: n(720, 26, 92, 30, 1480), tag: 'Build it' },
-    { id: 'p-one', cat: 'pizzas', name: 'One Topping', desc: 'Mozzarella plus your one favourite topping. Cheese choices don’t count toward the limit.',
-      price: 997, diet: 'veg', builder: 'pizza', toppingLimit: 1, recipe: pz('tomato-sauce', ['mozzarella', 'mushroom']), nutrition: n(740, 27, 93, 31, 1520), tag: 'Value' },
-    { id: 'p-maddog', cat: 'pizzas', name: 'Mad Dog', desc: 'Tomato, mozzarella, pepperoni, Italian sausage and ham. Built for meat lovers.',
-      price: 1297, diet: 'nonveg', builder: 'pizza', signature: true, recipe: pz('tomato-sauce', ['mozzarella', 'pepperoni', 'sausage', 'ham']), nutrition: n(1010, 49, 92, 48, 2510), tag: 'Popular' },
-    { id: 'p-tristan', cat: 'pizzas', name: 'Tristan', desc: 'White sauce, mozzarella, mushrooms, roasted red peppers, roasted garlic and artichokes.',
-      price: 1297, diet: 'veg', builder: 'pizza', signature: true, recipe: pz('white-sauce', ['mozzarella', 'mushroom', 'roasted-red-pepper', 'garlic', 'artichoke']), nutrition: n(860, 36, 98, 33, 1720) },
-    { id: 'p-maddy', cat: 'pizzas', name: 'Maddy', desc: 'White sauce, mozzarella, spinach, fresh tomatoes and roasted garlic.',
-      price: 1297, diet: 'veg', builder: 'pizza', signature: true, recipe: pz('white-sauce', ['mozzarella', 'spinach', 'tomato', 'garlic']), nutrition: n(810, 33, 96, 32, 1610) },
-    { id: 'p-dominic', cat: 'pizzas', name: 'Dominic', desc: 'Tomato, mozzarella, Italian sausage, red onion and dollops of ricotta.',
-      price: 1297, diet: 'nonveg', builder: 'pizza', signature: true, recipe: pz('tomato-sauce', ['mozzarella', 'ricotta', 'sausage', 'red-onion']), nutrition: n(960, 45, 94, 44, 2200) },
-    { id: 'p-caspian', cat: 'pizzas', name: 'Caspian', desc: 'Buffalo sauce, mozzarella, gorgonzola, roasted chicken and red onion.',
-      price: 1397, diet: 'nonveg', builder: 'pizza', signature: true, recipe: pz('buffalo-sauce', ['mozzarella', 'gorgonzola', 'chicken', 'red-onion']), nutrition: n(930, 40, 91, 52, 2380), tag: 'Spicy' },
-    { id: 'p-lucy', cat: 'pizzas', name: 'Lucy Sunshine', desc: 'Tomato, mozzarella, parmesan, roasted garlic and fresh basil.',
-      price: 1197, diet: 'veg', builder: 'pizza', signature: true, recipe: pz('tomato-sauce', ['mozzarella', 'parmesan', 'garlic', 'basil']), nutrition: n(790, 31, 94, 34, 1590) },
-    { id: 'p-garden', cat: 'pizzas', name: 'Vegan Garden', desc: 'Tomato, vegan mozzarella, spinach, mushrooms, green peppers, olives and red onion.',
-      price: 1297, diet: 'vegan', builder: 'pizza', signature: true, recipe: pz('tomato-sauce', ['vegan-mozz', 'spinach', 'mushroom', 'green-pepper', 'olive', 'red-onion']), nutrition: n(690, 22, 101, 18, 1430), tag: 'Vegan' },
-    { id: 'p-truffle', cat: 'pizzas', name: 'Truffle Shroom', desc: 'Seasonal: white sauce, mushrooms, arugula and parmesan.', price: 1497, diet: 'veg', builder: 'pizza', signature: true, available: false,
-      recipe: pz('white-sauce', ['mozzarella', 'parmesan', 'mushroom', 'arugula']), nutrition: n(840, 35, 95, 33, 1650), tag: 'Sold out' },
-    { id: 'p-holiday', cat: 'pizzas', name: 'Holiday Pie (unpublished)', desc: 'Hidden test product.', price: 1597, diet: 'veg', builder: 'pizza', published: false,
+    // Pizzas — signatures from modpizza.com/menu; prices are sample values
+    Object.assign({ id: 'p-cyo', cat: 'pizzas', name: 'The MOD', desc: 'Build your own with 40+ toppings and 8 finishing sauces — all for one price. Supports independent half-and-half recipes.',
+      price: 1199, diet: 'veg', builder: 'pizza', custom: true, splitAllowed: true, recipe: pz('tomato-sauce', ['mozzarella']), nutrition: n(680, 24, 88, 29, 1420), calText: 'Custom', tag: 'Build your own' }, img('2021/12/260518_olo_image_square_01-23.jpg')),
+    Object.assign({ id: 'p-one', cat: 'pizzas', name: 'One Topping', desc: 'Everyday value: sauce, cheese and your one favourite topping. Cheese choices don’t count toward the limit.',
+      price: 899, diet: 'nonveg', builder: 'pizza', toppingLimit: 1, recipe: pz('tomato-sauce', ['mozzarella', 'pepperoni']), nutrition: n(860, 36, 89, 37, 1980), tag: 'Value' }, img('2026/07/260518_olo_image_square_01_tan-08.jpg')),
+    Object.assign({ id: 'p-maddy', cat: 'pizzas', name: 'Maddy’s Favorite', desc: 'Tomato sauce, mozzarella and asiago. Simple, cheesy, perfect.',
+      price: 999, diet: 'veg', builder: 'pizza', signature: true, recipe: pz('tomato-sauce', ['mozzarella', 'asiago']), nutrition: n(682, 26, 86, 30, 1390) }, img('2026/08/260518_olo_image_square_01_tan-16.jpg')),
+    Object.assign({ id: 'p-ogpep', cat: 'pizzas', name: 'OG Pepperoni', desc: 'Tomato sauce, mozzarella, asiago and pepperoni.',
+      price: 1099, diet: 'nonveg', builder: 'pizza', signature: true, recipe: pz('tomato-sauce', ['mozzarella', 'asiago', 'pepperoni']), nutrition: n(906, 40, 87, 39, 2050), tag: 'Popular' }, img('2026/07/260518_olo_image_square_01_tan-08.jpg')),
+    Object.assign({ id: 'p-carnivore', cat: 'pizzas', name: 'Carnivore', desc: 'Tomato sauce, mozzarella, parmesan, pepperoni, Italian sausage, ground beef and bacon.',
+      price: 1399, diet: 'nonveg', builder: 'pizza', signature: true, recipe: pz('tomato-sauce', ['mozzarella', 'parmesan', 'pepperoni', 'sausage', 'ground-beef', 'bacon']), nutrition: n(1121, 56, 88, 55, 2690) }, img('2026/07/260518_olo_image_square_01_tan-10.jpg')),
+    Object.assign({ id: 'p-aloha', cat: 'pizzas', name: 'Aloha', desc: 'Tomato sauce, mozzarella, Canadian bacon and pineapple.',
+      price: 1199, diet: 'nonveg', builder: 'pizza', signature: true, recipe: pz('tomato-sauce', ['mozzarella', 'canadian-bacon', 'pineapple']), nutrition: n(660, 21, 92, 31, 1610) }, img('2026/07/260518_olo_image_square_01_tan-09.jpg')),
+    Object.assign({ id: 'p-firebird', cat: 'pizzas', name: 'Firebird', desc: 'Olive oil, Frank’s Buffalo sauce, mozzarella, gorgonzola, cheddar, grilled chicken and a hot buffalo finish.',
+      price: 1399, diet: 'nonveg', builder: 'pizza', signature: true, recipe: pz('buffalo-sauce', ['mozzarella', 'gorgonzola', 'cheddar', 'chicken', 'buffalo-finish']), nutrition: n(850, 34, 86, 52, 2410), tag: 'Spicy' }, img('2026/07/260518_olo_image_square_01_tan-12.jpg')),
+    Object.assign({ id: 'p-legend', cat: 'pizzas', name: 'Loaded Legend', desc: 'Tomato sauce, mozzarella, pepperoni, Italian sausage, mushrooms, green peppers, red onion, black olives and oregano.',
+      price: 1399, diet: 'nonveg', builder: 'pizza', signature: true, recipe: pz('tomato-sauce', ['mozzarella', 'pepperoni', 'sausage', 'mushroom', 'green-pepper', 'red-onion', 'olive', 'oregano']), nutrition: n(1011, 48, 92, 45, 2470) }, img('2026/07/260518_olo_image_square_01_tan-19.jpg')),
+    Object.assign({ id: 'p-modgherita', cat: 'pizzas', name: 'MOD-gherita', desc: 'Garlic, olive oil, tomato sauce, mozzarella, parmesan, tomato slices, basil, salt and pepper.',
+      price: 1199, diet: 'veg', builder: 'pizza', signature: true, recipe: pz('tomato-sauce', ['mozzarella', 'parmesan', 'garlic-chopped', 'tomato', 'basil']), nutrition: n(725, 28, 90, 31, 1560) }, img('2026/07/260518_olo_image_square_01_tan-18.jpg')),
+    Object.assign({ id: 'p-pesto', cat: 'pizzas', name: 'Perfect Pesto', desc: 'Pesto, garlic rub, mozzarella, feta, artichokes, chili flakes, arugula, roasted garlic and balsamic fig glaze.',
+      price: 1399, diet: 'veg', builder: 'pizza', signature: true, recipe: pz('pesto-sauce', ['mozzarella', 'feta', 'artichoke', 'chili-flakes', 'arugula', 'garlic', 'fig-glaze']), nutrition: n(888, 41, 95, 33, 1720), tag: 'New' }, img('2026/07/260518_olo_image_square_01_tan-03.jpg')),
+    Object.assign({ id: 'p-smoke', cat: 'pizzas', name: 'Smoke Show', desc: 'Sweet BBQ sauce, mozzarella, cheddar, grilled chicken, bacon, red onion and cilantro.',
+      price: 1399, diet: 'nonveg', builder: 'pizza', signature: true, recipe: pz('bbq-sauce', ['mozzarella', 'cheddar', 'chicken', 'bacon', 'red-onion', 'cilantro']), nutrition: n(954, 37, 104, 55, 2280) }, img('2026/07/260518_olo_image_square_01_tan-04.jpg')),
+    Object.assign({ id: 'p-vegout', cat: 'pizzas', name: 'Veg Out', desc: 'Tomato sauce, mozzarella, parmesan, mushrooms, green peppers, red onion, black olives, diced tomatoes and oregano.',
+      price: 1199, diet: 'veg', builder: 'pizza', signature: true, recipe: pz('tomato-sauce', ['mozzarella', 'parmesan', 'mushroom', 'green-pepper', 'red-onion', 'olive', 'tomato', 'oregano']), nutrition: n(670, 24, 92, 28, 1530), tag: 'New' }, img('2026/07/260518_olo_image_square_01_tan-05.jpg')),
+    { id: 'p-mikes', cat: 'pizzas', name: 'Mike’s Favorite', desc: 'Tomato sauce, mozzarella, parmesan, ricotta, spicy chicken sausage, jalapeños and a Mike’s Hot Honey finish.', price: 1299, diet: 'nonveg', builder: 'pizza', signature: true, available: false,
+      recipe: pz('tomato-sauce', ['mozzarella', 'parmesan', 'ricotta', 'spicy-chicken-sausage', 'jalapeno', 'hot-honey']), nutrition: n(940, 42, 96, 44, 2210), tag: 'Sold out' },
+    { id: 'p-holiday', cat: 'pizzas', name: 'Holiday Pie (unpublished)', desc: 'Hidden test product.', price: 1599, diet: 'veg', builder: 'pizza', published: false,
       recipe: pz('tomato-sauce', ['mozzarella']), nutrition: n(800, 30, 90, 30, 1500) },
 
-    // Salads
-    { id: 's-caesar', cat: 'salads', name: 'Caesar', desc: 'Romaine, parmesan and croutons with Caesar dressing.', price: 897, diet: 'veg', builder: 'salad',
-      recipe: { greens: 'romaine', dressing: 'caesar', toppings: ['parmesan', 'croutons'] }, nutrition: n(420, 32, 22, 12, 780) },
-    { id: 's-italian', cat: 'salads', name: 'Italian Chop', desc: 'Romaine, salami, tomatoes, red onion, olives, pepperoncini and feta with balsamic. Contains meat.', price: 997, diet: 'nonveg', builder: 'salad',
-      recipe: { greens: 'romaine', dressing: 'balsamic', toppings: ['salami', 'tomato', 'red-onion', 'olive', 'pepperoncini', 'feta'] }, nutrition: n(510, 38, 18, 21, 1350) },
-    { id: 's-garden', cat: 'salads', name: 'Garden', desc: 'Mixed greens, cucumber, tomatoes, chickpeas and red onion with balsamic.', price: 797, diet: 'vegan', builder: 'salad',
-      recipe: { greens: 'mixed', dressing: 'balsamic', toppings: ['cucumber', 'tomato', 'chickpeas', 'red-onion'] }, nutrition: n(290, 16, 30, 9, 420) },
-    { id: 's-greek', cat: 'salads', name: 'Greek', desc: 'Romaine, feta, cucumber, olives, tomatoes and red onion.', price: 897, diet: 'veg', builder: 'salad',
-      recipe: { greens: 'romaine', dressing: 'balsamic', toppings: ['feta', 'cucumber', 'olive', 'tomato', 'red-onion'] }, nutrition: n(380, 28, 19, 11, 960) },
+    // Salads — MINI / MOD / MEGA sizes
+    Object.assign({ id: 's-cyo', cat: 'salads', name: 'The MOD Salad', desc: 'Build your own on romaine or mixed greens with 40+ toppings.', price: 899, diet: 'vegan', builder: 'salad', custom: true,
+      recipe: { greens: 'romaine', dressing: 'balsamic', toppings: [] }, nutrition: n(60, 0, 10, 4, 40), calText: 'Custom' }, img('2021/12/260518_olo_image_square_01-24.jpg')),
+    Object.assign({ id: 's-caesar', cat: 'salads', name: 'Caesar', desc: 'Romaine, Caesar dressing, asiago, parmesan and croutons.', price: 899, diet: 'veg', builder: 'salad',
+      recipe: { greens: 'romaine', dressing: 'caesar', toppings: ['asiago', 'parmesan', 'croutons'] }, nutrition: n(428, 34, 18, 12, 760) }, img('2020/11/260518_olo_image_square_01_tan-14.jpg')),
+    Object.assign({ id: 's-garden', cat: 'salads', name: 'Garden', desc: 'Romaine, mixed greens, cucumbers, diced tomatoes and champagne vinaigrette.', price: 799, diet: 'vegan', builder: 'salad',
+      recipe: { greens: 'mixed', dressing: 'champagne', toppings: ['cucumber', 'tomato'] }, nutrition: n(125, 8, 11, 2, 210) }, img('2020/09/260518_olo_image_square_01_tan-21.jpg')),
+    Object.assign({ id: 's-italian', cat: 'salads', name: 'Italian Chop', desc: 'Romaine, arugula, balsamic vinaigrette, mozzarella, parmesan, salami, black olives, green peppers, red onion and oregano. Contains meat.', price: 999, diet: 'nonveg', builder: 'salad',
+      recipe: { greens: 'romaine', dressing: 'balsamic', toppings: ['mozzarella', 'parmesan', 'salami', 'olive', 'green-pepper', 'red-onion', 'oregano'] }, nutrition: n(375, 29, 12, 17, 1120) }, img('2021/12/260518_olo_italian_chop_square_tan_01-1.jpg')),
+    Object.assign({ id: 's-med', cat: 'salads', name: 'Mediterranean', desc: 'Mixed greens, olive oil and red wine vinegar, feta, black olives, roasted red peppers, cucumbers, chickpeas and oregano.', price: 999, diet: 'veg', builder: 'salad',
+      recipe: { greens: 'mixed', dressing: 'oil-vinegar', toppings: ['feta', 'olive', 'roasted-red-pepper', 'cucumber', 'chickpeas', 'oregano'] }, nutrition: n(163, 12, 10, 6, 480) }, img('2026/07/260518_olo_image_square_01_tan-17.jpg')),
 
-    // Sides
-    { id: 'd-garlic', cat: 'sides', name: 'Garlic Strips', desc: 'Oven-baked dough strips brushed with garlic oil and parmesan.', price: 597, diet: 'veg', nutrition: n(560, 24, 70, 16, 980) },
-    { id: 'd-cheesy', cat: 'sides', name: 'Cheesy Bread', desc: 'Mozzarella-loaded bread with a side of tomato dip.', price: 697, diet: 'veg', nutrition: n(690, 30, 74, 28, 1240) },
-    { id: 'd-bites', cat: 'sides', name: 'Buffalo Chicken Bites', desc: 'Roasted chicken bites tossed in buffalo sauce with ranch.', price: 897, diet: 'nonveg', nutrition: n(480, 26, 14, 42, 1680) },
+    // Sides (sample — not listed on the public menu page)
+    { id: 'd-garlic', cat: 'sides', name: 'Cheesy Garlic Bread', desc: 'Garlic rub, mozzarella and asiago on our thin crust, cut into strips with a side of tomato dip.', price: 729, diet: 'veg', nutrition: n(640, 28, 72, 26, 1180) },
+    { id: 'd-strips', cat: 'sides', name: 'Garlic Strips', desc: 'Oven-baked dough strips brushed with garlic rub and parmesan.', price: 597, diet: 'veg', nutrition: n(560, 24, 70, 16, 980) },
 
     // Desserts
+    Object.assign({ id: 'x-nonamecake', cat: 'desserts', name: 'No Name Cake', desc: 'Chocolate cake with a vanilla buttercream center and chocolate glaze.', price: 399, diet: 'veg', nutrition: n(290, 14, 38, 3, 210), tag: 'Fan favorite' }, img('2018/06/260615_olo_image_square_01-31.jpg')),
+    Object.assign({ id: 'x-cinnamod', cat: 'desserts', name: 'cinnaMOD', desc: 'Our 11-inch thick crust with cinnamon sugar and butter, finished with salted caramel and icing drizzle.', price: 899, diet: 'veg', nutrition: n(1182, 38, 190, 18, 1040), tag: 'New' }, img('2026/07/cinnamod.jpg')),
     { id: 'x-cakepop', cat: 'desserts', name: 'Cake Pop Pair', desc: 'Two cake pops — pick each flavor.', price: 397, diet: 'veg', builder: 'cakepop', recipe: { f1: 'pink-vanilla', f2: 'pumpkin-spice' }, nutrition: n(340, 16, 46, 3, 210), tag: 'Seasonal' },
-    { id: 'x-nonamecake', cat: 'desserts', name: 'No Name Cake', desc: 'Chocolate cake with a rich ganache layer.', price: 397, diet: 'veg', nutrition: n(410, 22, 50, 5, 260) },
-    { id: 'x-cinnamon', cat: 'desserts', name: 'Cinnamon Strips', desc: 'Warm dough strips with cinnamon sugar and icing.', price: 497, diet: 'veg', nutrition: n(520, 18, 82, 9, 450) },
-    { id: 'x-cookie', cat: 'desserts', name: 'Vegan Chocolate Cookie', desc: 'Soft-baked, dairy- and egg-free.', price: 297, diet: 'vegan', nutrition: n(300, 14, 41, 3, 190) },
 
     // Kids
-    { id: 'k-meal', cat: 'kids', name: 'Kids Meal', desc: 'Small pizza with one topping or cheese only, plus a drink.', price: 697, diet: 'veg', builder: 'kids', recipe: { topping: 'cheese', drink: 'apple-juice' }, nutrition: n(520, 18, 66, 22, 980) },
+    Object.assign({ id: 'k-meal', cat: 'kids', name: 'Kids Meal', desc: 'A mini cheese or pepperoni pizza with organic juice or milk.', price: 699, diet: 'veg', builder: 'kids', recipe: { topping: 'cheese', drink: 'apple-juice' }, nutrition: n(365, 13, 48, 15, 640), calText: '365–480' }, img('2017/09/260611_olo_image_square_01-25.jpg')),
 
     // Beverages
-    { id: 'b-lemonade', cat: 'beverages', name: 'House Lemonade', desc: 'Fresh-squeezed, lightly sweet. 20 oz.', price: 299, diet: 'vegan', nutrition: n(180, 0, 46, 0, 10) },
-    { id: 'b-tea', cat: 'beverages', name: 'Iced Tea', desc: 'Unsweetened black tea. 20 oz.', price: 279, diet: 'vegan', nutrition: n(0, 0, 0, 0, 10) },
-    { id: 'b-rootbeer', cat: 'beverages', name: 'Craft Root Beer', desc: 'Small-batch root beer. 12 oz bottle.', price: 299, diet: 'vegan', nutrition: n(170, 0, 45, 0, 50) },
+    { id: 'b-fountain', cat: 'beverages', name: 'Fountain Drink', desc: 'Coca-Cola and Dr Pepper brand sodas.', price: 299, diet: 'vegan', nutrition: n(310, 0, 84, 0, 60), calText: '0–310' },
+    { id: 'b-tea', cat: 'beverages', name: 'House-Made Iced Tea', desc: 'Brewed in store. Sweetened or unsweetened.', price: 299, diet: 'vegan', nutrition: n(0, 0, 0, 0, 10), calText: '0–310' },
+    { id: 'b-lemonade', cat: 'beverages', name: 'House-Made Lemonade', desc: 'Fresh, lightly sweet lemonade.', price: 299, diet: 'vegan', nutrition: n(250, 0, 66, 0, 10) },
     { id: 'b-water', cat: 'beverages', name: 'Bottled Water', desc: 'Still water. 16.9 oz.', price: 199, diet: 'vegan', nutrition: n(0, 0, 0, 0, 0) },
-    { id: 'b-beer', cat: 'beverages', name: 'Local Draft Beer', desc: 'Pickup only. ID required at the counter. 16 oz.', price: 699, diet: 'vegan', pickupOnly: true, nutrition: n(190, 0, 15, 2, 15), tag: 'Pickup only' },
-    { id: 'b-wine', cat: 'beverages', name: 'House Red Wine', desc: 'Pickup only. ID required at the counter. 6 oz.', price: 899, diet: 'vegan', pickupOnly: true, nutrition: n(150, 0, 4, 0, 5), tag: 'Pickup only' },
+    { id: 'b-beer', cat: 'beverages', name: 'Draft Beer', desc: 'Locally selected by region. Pickup only — ID required.', price: 699, diet: 'vegan', pickupOnly: true, nutrition: n(190, 0, 15, 2, 15), tag: 'Pickup only' },
+    { id: 'b-wine', cat: 'beverages', name: 'Wine', desc: 'Locally selected by region. Pickup only — ID required.', price: 899, diet: 'vegan', pickupOnly: true, nutrition: n(150, 0, 4, 0, 5), tag: 'Pickup only' },
 
     // Extras
     { id: 'e-ranch', cat: 'extras', name: 'Ranch Dip', desc: '2 oz side of ranch.', price: 79, diet: 'veg', nutrition: n(220, 23, 2, 1, 310) },
+    { id: 'e-hothoney', cat: 'extras', name: 'Mike’s Hot Honey', desc: 'A side cup for dipping your crust.', price: 99, diet: 'veg', nutrition: n(60, 0, 17, 0, 0) },
     { id: 'e-pepper', cat: 'extras', name: 'Red Pepper Flakes', desc: 'Free packets.', price: 0, diet: 'vegan', free: true, nutrition: n(0, 0, 0, 0, 0) },
     { id: 'e-cutlery', cat: 'extras', name: 'Napkins & Cutlery', desc: 'Free — only if you need them.', price: 0, diet: 'vegan', free: true, nutrition: n(0, 0, 0, 0, 0) }
   ];
 
   const KIDS_DRINKS = [
-    { id: 'apple-juice', name: 'Apple juice', diet: 'vegan' }, { id: 'milk', name: 'Milk', diet: 'veg' },
+    { id: 'apple-juice', name: 'Organic apple juice', diet: 'vegan' }, { id: 'milk', name: 'Milk', diet: 'veg' },
     { id: 'choc-milk', name: 'Chocolate milk', diet: 'veg' }, { id: 'water', name: 'Water', diet: 'vegan' }
   ];
   const CAKEPOP_FLAVORS = [{ id: 'pink-vanilla', name: 'Pink vanilla', color: '#f6a5c0' }, { id: 'pumpkin-spice', name: 'Pumpkin spice', color: '#d9822b' }];
@@ -270,5 +327,5 @@
     '4': [39.77, -86.16, 'Great Lakes'], '5': [44.98, -93.27, 'Upper Midwest'], '6': [41.88, -87.63, 'Midwest'], '7': [32.78, -96.80, 'South Central'], '8': [39.74, -104.99, 'Mountain West'], '9': [47.61, -122.33, 'West Coast'] };
   const SIM_GPS = { lat: 47.6142, lng: -122.3196, label: 'Current location (simulated: Capitol Hill, Seattle)' };
 
-  window.MOD_DATA = { CONFIG, STORES, INGREDIENTS, PRODUCTS, CATEGORIES, OFFERS, REWARDS, SALAD_TOPPINGS, PIZZA_TOPPINGS, CHEESES, SAUCES, KIDS_DRINKS, CAKEPOP_FLAVORS, SAMPLE_RECEIPTS, ZIPS, ZIP_PREFIX, ZIP_REGION, SIM_GPS };
+  window.MOD_DATA = { CONFIG, STORES, INGREDIENTS, PRODUCTS, CATEGORIES, OFFERS, REWARDS, SALAD_TOPPINGS, PIZZA_TOPPINGS, FINISHES, CHEESES, SAUCES, KIDS_DRINKS, CAKEPOP_FLAVORS, SAMPLE_RECEIPTS, ZIPS, ZIP_PREFIX, ZIP_REGION, SIM_GPS };
 })();

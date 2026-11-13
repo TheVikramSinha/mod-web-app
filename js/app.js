@@ -101,7 +101,7 @@
         <a class="cart-btn" href="#/cart" aria-label="Cart, ${n} item${n === 1 ? '' : 's'}">${icon('cart')}<span class="badge ${n ? '' : 'zero'}" aria-hidden="true">${n}</span></a>
       </div></div>`;
   }
-  const logo = () => `<span class="logo-mark" aria-hidden="true">MOD</span><span class="logo-text">pizza</span>`;
+  const logo = () => `${U.logoImg()}<span class="logo-text">MOD Pizza</span>`;
   function tabs(r) {
     if (participantInfo()) return '';
     const a = r.parts[0] || 'home';
@@ -330,7 +330,9 @@
     },
     'add-simple': (el) => addSimple(el.dataset.id),
     fav: (el) => { const j = M.J(); const i = j.favorites.indexOf(el.dataset.id); if (i > -1) j.favorites.splice(i, 1); else j.favorites.push(el.dataset.id); M.commit('journey'); U.announce(i > -1 ? 'Removed from favorites' : 'Saved to favorites'); },
-    diet: (el) => { st.menu.diet = el.dataset.diet; },
+    diet: (el) => { st.menu.diet = el.dataset.diet; st.menu.touched = true; st.menu.auto = false; },
+    'prof-edit': (el) => { st.profEdit = el.dataset.v || null; st.fieldErrors = {}; setTimeout(() => { const i = main.querySelector('.pform input'); if (i) i.focus(); else { const b = main.querySelector(`[data-act=prof-edit][data-v="${el.dataset.v ? '' : ''}"]`); } }, 0); },
+    'pref-toggle': (el) => { const p = M.J().profile; p[el.dataset.k] = el.checked; M.commit('journey'); U.announce(el.checked ? 'On' : 'Off'); },
     'clear-search': () => { st.menu.q = ''; },
     'clear-filters': () => { st.menu.q = ''; st.menu.diet = 'all'; go('#/menu' + (st.groupTarget ? `?group=${st.groupTarget.g}&p=${st.groupTarget.p}` : '')); },
     qty: (el) => { const l = M.S.shared.cart.lines.find(x => x.uid === el.dataset.uid); if (l) { M.setQty(l.uid, l.qty + Number(el.dataset.d)); U.announce(l.qty + Number(el.dataset.d) <= 0 ? 'Item removed' : `Quantity ${Math.min(20, l.qty)}`); } },
@@ -428,7 +430,7 @@
       entry.dlg.querySelector('#gc-yes').addEventListener('click', () => { M.cancelGroup(el.dataset.g); U.closeDialog(entry); U.toast('Group canceled', 'info'); render(); });
     }
   };
-  const NO_RENDER = new Set(['nav-back', 'sign-out', 'cancel-order', 'scan-receipt', 'login-sample', 'open-setup', 'journey-menu', 'amend-open', 'chat-open', 'pdf', 'print', 'email-copy', 'topup', 'reset-demo', 'g-note', 'g-window', 'g-copy', 'g-cancel']);
+  const NO_RENDER = new Set(['pref-toggle', 'nav-back', 'sign-out', 'cancel-order', 'scan-receipt', 'login-sample', 'open-setup', 'journey-menu', 'amend-open', 'chat-open', 'pdf', 'print', 'email-copy', 'topup', 'reset-demo', 'g-note', 'g-window', 'g-copy', 'g-cancel']);
 
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-act]'); if (!el) return;
@@ -510,7 +512,7 @@
       if (phone) { const n = phone.replace(/\D/g, '').length; if (n < 10 || n > 15) fe['p-phone'] = 'Phone must contain 10–15 digits.'; }
       st.fieldErrors = fe; if (Object.keys(fe).length) { focusFirstError(); return; }
       const p = M.J().profile; Object.assign(p, { name, email, phone }); if (f.birthday) p.birthday = f.birthday.value; if (f.marketing) p.marketing = f.marketing.checked;
-      M.commit('journey'); U.toast('Saved');
+      st.profEdit = null; M.commit('journey'); U.toast('Personal information saved');
     },
     enroll: (f) => {
       const fe = {}; const name = f.name.value.trim(), email = f.email.value.trim();
@@ -546,6 +548,15 @@
     },
     feedback: (f) => { const r = f.querySelector('input[name=rating]:checked'); if (!r) { U.toast('Choose a star rating.', 'err'); return; } M.setFeedback(f.dataset.id, Number(r.value), f.comment.value.trim()); U.toast('Thanks for the feedback!'); },
     'setup-addr': (f) => { BLD.setupSubmitAddress(f); return 'async'; },
+    'food-profile': (f) => {
+      const p = M.J().profile;
+      p.allergens = [...f.querySelectorAll('input[name=allergens]:checked')].map(x => x.value);
+      let diets = [...f.querySelectorAll('input[name=diets]:checked')].map(x => x.value);
+      if (diets.includes('vegan')) diets = diets.filter(x => x !== 'vegetarian' && x !== 'dairy-free').concat([]);
+      p.diets = diets; p.allergyNote = f.allergyNote.value.trim(); p.foodReviewed = true;
+      st.profEdit = null; st.menu.touched = false; st.menu.auto = false; if (st.menu.diet !== 'all' && !diets.length) st.menu.diet = 'all';
+      M.commit('journey'); U.toast('Food preferences saved');
+    },
     'store-search': (f) => { BLD.storeSearch(f); return 'async'; },
     'otp-request': (f) => {
       const L = st.login || (st.login = { channel: 'email' }); L.value = f.id.value.trim();

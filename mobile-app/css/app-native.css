@@ -128,3 +128,6 @@ html.app.framed.p-android { --sab: 10px; }
 .ob-copy h2:focus, .ob-copy h2:focus-visible { outline: none; }
 html.app .seg-diet .seg-btn { white-space: nowrap; font-size: 13px; padding: 7px 4px; }
 html.app #toast-root { width: calc(100% - 24px); }
+.sp-mark { background: #fff; padding: 18px; border-radius: 28px; } .sp-mark .logo-img, .sp-mark .logo-svg { width: 96px; }
+.abar .logo-img, .abar .logo-svg { width: 36px; } .abar .logo-text { display: none; }
+.ob-top .logo-img, .ob-top .logo-svg { width: 40px; }

@@ -68,7 +68,7 @@
       <div class="pcard-body">
         <h3><a href="${href}">${esc(p.name)}</a></h3>
         <p class="pcard-desc">${esc(p.desc)}</p>
-        <div class="pcard-meta">${dietBadge(p.diet)}<span class="cal">${p.nutrition.cal} cal</span>${p.pickupOnly ? pill('Pickup only', 'pill-warn') : ''}</div>
+        <div class="pcard-meta">${dietBadge(p.diet)}<span class="cal">${p.calText || p.nutrition.cal} cal</span>${p.pickupOnly ? pill('Pickup only', 'pill-warn') : ''}${(() => { const w = M.profileWarnings({ productId: p.id, config: M.defaultConfig(p), qty: 1 }); return w.length ? `<span class="pwarn" title="${attr(w.join('; '))}">${icon('alert')}${esc(w[0])}</span>` : ''; })()}</div>
         <div class="pcard-foot"><span class="price">${price === 0 ? 'Free' : money(price)}</span>${action}</div>
       </div></article>`;
   }
@@ -184,6 +184,8 @@
   V.menu = function (q) {
     const cats = window.MOD_DATA.CATEGORIES;
     const cat = q.cat && cats.some(c => c.id === q.cat) ? q.cat : 'all';
+    const fpd = M.foodProfile().diets; const autoDiet = fpd.includes('vegan') ? 'vegan' : fpd.includes('vegetarian') ? 'veg' : null;
+    if (!st.menu.touched && autoDiet && st.menu.diet === 'all') { st.menu.diet = autoDiet; st.menu.auto = true; }
     const diet = st.menu.diet, term = st.menu.q.trim().toLowerCase();
     const match = (p) => {
       if (!M.isPublished(p)) return false;
@@ -213,6 +215,7 @@
         <nav class="tabs" aria-label="Menu categories">${tab('all', 'All')}${cats.map(c => tab(c.id, c.name)).join('')}</nav>
         <div class="seg seg-diet" role="radiogroup" aria-label="Dietary filter">${dietBtn('all', 'All')}${dietBtn('veg', 'Veg')}${dietBtn('nonveg', 'Non-veg')}${dietBtn('vegan', 'Vegan')}</div>
       </div>
+      ${st.menu.auto && diet !== 'all' ? `<p class="auto-diet">${icon('leaf')}<span>Showing ${diet === 'vegan' ? 'Vegan' : 'Veg'} items based on your dietary preferences.</span><button class="link-btn" data-act="diet" data-diet="all">Show all</button></p>` : ''}
       <p class="sr-only" role="status">${list.length} item${list.length === 1 ? '' : 's'} shown</p>
       ${sections || empty('search', 'Nothing matches those filters', `No items found${term ? ` for “${esc(st.menu.q)}”` : ''}${diet !== 'all' ? ` with the ${diet === 'nonveg' ? 'Non-veg' : diet === 'veg' ? 'Veg' : 'Vegan'} filter` : ''}${cat !== 'all' ? ` in ${esc(cats.find(c => c.id === cat).name)}` : ''}.`, '<button class="btn btn-primary" data-act="clear-filters">Clear filters</button>')}
       <p class="fine">${icon('info')} Dietary labels describe the standard recipe. Customizing can change suitability. All items are prepared in shared kitchen areas, so we can’t guarantee any item is free from allergens or animal products. Nutrition values are illustrative samples.</p>`;
@@ -239,6 +242,7 @@
           ${l.participant ? `<span class="pill pill-info">${icon('users')}${esc(l.participant)}</span>` : ''}
           ${M.describe(l).length ? `<ul class="cline-desc">${M.describe(l).map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : ''}
           ${l.note ? `<p class="cline-note">Note: ${esc(l.note)}</p>` : ''}
+          ${M.profileWarnings(l).length ? `<p class="cline-pwarn">${icon('alert')}${esc(M.profileWarnings(l).join(' · '))} <span class="muted">— based on your profile</span></p>` : ''}
           ${x.issues.map(i => `<p class="cline-issue" role="alert">${icon('alert')}${esc(i)} — edit or remove to continue.</p>`).join('')}
           <div class="cline-ctrl">
             ${l.locked ? `<span class="muted small">${icon('lock')}Qty ${l.qty} · locked for group checkout</span>`
@@ -307,7 +311,7 @@
       name: d.name != null ? d.name : j.profile.name, email: d.email != null ? d.email : j.profile.email, phone: d.phone != null ? d.phone : j.profile.phone,
       address: d.address != null ? d.address : (g && g.address ? g.address.line : addr ? addr.line : ''),
       instructions: d.instructions != null ? d.instructions : (g && g.address ? g.address.instructions : addr ? addr.instructions : ''),
-      allergens: d.allergens || [], kitchenNote: d.kitchenNote || ''
+      allergens: d.allergens || M.foodProfile(j).allergens, kitchenNote: d.kitchenNote != null ? d.kitchenNote : (j.profile.allergyNote ? 'Allergy: ' + j.profile.allergyNote : '')
     };
     st.expectedTotal = q.total;
     const fe = st.fieldErrors || {};
@@ -335,7 +339,7 @@
             ${q.mode === 'delivery' ? `
               ${j.addresses.length && !g ? `<div class="field"><label for="co-saved">Saved address</label><select id="co-saved" data-act="co-addr">${j.addresses.map(a => `<option value="${a.id}" ${a.id === j.selectedAddressId ? 'selected' : ''}>${esc(a.label)} — ${esc(a.line)}</option>`).join('')}<option value="">Enter a different address…</option></select></div>` : ''}
               ${field('address', 'Delivery address', 'text', v.address, 'autocomplete="street-address" required')}
-              <div class="field"><label for="co-instructions">Delivery instructions <span class="opt">optional</span></label><textarea id="co-instructions" name="instructions" rows="2" data-draft="instructions" placeholder="Gate code, floor, where to leave it…">${esc(v.instructions)}</textarea></div>
+              <div class="field"><label for="co-instructions">Delivery instructions <span class="optl">optional</span></label><textarea id="co-instructions" name="instructions" rows="2" data-draft="instructions" placeholder="Gate code, floor, where to leave it…">${esc(v.instructions)}</textarea></div>
               <fieldset class="opt-fs"><legend>Drop-off</legend><div class="method-grid two">${Object.entries(M.CONFIG.dropoffs).map(([k, l]) => `<label class="method ${sh.dropoff === k ? 'on' : ''}"><input type="radio" name="dropoff" value="${k}" ${sh.dropoff === k ? 'checked' : ''} data-act="dropoff" data-v="${k}">${icon(k === 'door' ? 'home' : 'user')}<span><strong>${l}</strong><small>${k === 'door' ? 'Contactless — we’ll send a photo' : 'Courier hands it to you'}</small></span></label>`).join('')}</div></fieldset>
               <p class="tiny muted">Address entry is local text only — no live verification in this prototype.</p>`
               : `${pickupMethodPicker(q.store, sh.pickupMethod, !!g)}
@@ -344,8 +348,8 @@
           </section>
 
           <section class="card co-sect" aria-labelledby="co-h-kit"><h2 id="co-h-kit" class="h3">${icon('alert')}Allergies & kitchen note</h2>
-            <fieldset class="chips-fs"><legend>Allergens to flag <span class="opt">optional</span></legend><div class="chip-row">${ALG.map(a => `<label class="chip-check"><input type="checkbox" name="allergens" value="${a}" ${v.allergens.includes(a) ? 'checked' : ''} data-act="allergen"><span>${a}</span></label>`).join('')}</div></fieldset>
-            <div class="field"><label for="co-kitchenNote">Kitchen note <span class="opt">optional</span></label><textarea id="co-kitchenNote" name="kitchenNote" rows="2" maxlength="200" data-draft="kitchenNote" placeholder="e.g. Please change gloves for my order">${esc(v.kitchenNote)}</textarea></div>
+            ${!d.allergens && M.foodProfile(j).allergens.length ? `<p class="small prof-src">${icon('user')}Pre-selected from your profile · <a href="#/account">Edit profile</a></p>` : ''}<fieldset class="chips-fs"><legend>Allergens to flag <span class="optl">optional</span></legend><div class="chip-row">${ALG.map(a => `<label class="chip-check"><input type="checkbox" name="allergens" value="${a}" ${v.allergens.includes(a) ? 'checked' : ''} data-act="allergen"><span>${a}</span></label>`).join('')}</div></fieldset>
+            <div class="field"><label for="co-kitchenNote">Kitchen note <span class="optl">optional</span></label><textarea id="co-kitchenNote" name="kitchenNote" rows="2" maxlength="200" data-draft="kitchenNote" placeholder="e.g. Please change gloves for my order">${esc(v.kitchenNote)}</textarea></div>
             <p class="small warn-text">${icon('info')}Allergy notes help our team take care, but our kitchens share equipment and ingredients. We can’t guarantee an allergen-free meal.</p>
           </section>
 
@@ -495,7 +499,7 @@
     return `${pageHead('Receipt', '', `#/order/${o.id}`)}
       <div class="btn-row no-print receipt-actions"><button class="btn btn-primary" data-act="pdf" data-id="${o.id}">${icon('download')}Download PDF</button><button class="btn btn-outline" data-act="print">${icon('print')}Print</button><button class="btn btn-outline" data-act="email-copy" data-id="${o.id}">${icon('mail')}Email a copy</button></div>
       <article class="invoice card" id="invoice">
-        <header class="inv-head"><div class="logo-word">MOD<span>pizza</span></div><div class="inv-meta"><h2>Invoice</h2>
+        <header class="inv-head"><div class="inv-logo">${U.logoImg()}<span>MOD Pizza</span></div><div class="inv-meta"><h2>Invoice</h2>
           <dl><dt>Invoice</dt><dd>${esc(o.invoice.id)}</dd><dt>Revision</dt><dd>${o.invoice.revision}</dd><dt>Order</dt><dd>${esc(o.id)}</dd><dt>Date</dt><dd>${esc(M.fmtDate(o.createdAt, o.tz))} ${esc(M.fmtTime(o.createdAt, o.tz))}</dd><dt>Status</dt><dd>${esc(s.label)}</dd></dl></div></header>
         <div class="inv-parties"><div><h3>Billed to</h3><p>${esc(o.contact.name)}<br>${esc(o.contact.email)}<br>${esc(o.contact.phone)}${o.address ? `<br>${esc(o.address)}` : ''}</p></div>
           <div><h3>Store</h3><p>MOD ${esc(o.storeName)}<br>${esc(o.storeAddress)}<br>${esc(methodOf(o))}${o.vehicle ? ` · ${esc(o.vehicle)}` : ''}${o.schedule.type === 'later' ? ` · scheduled ${esc(M.fmtTime(o.schedule.slot, o.tz, { date: true }))}` : ''}</p></div></div>
@@ -565,7 +569,7 @@
 
   /* ---------------- REWARDS ---------------- */
   function memberGate(title) {
-    return pageHead(title) + `<div class="gate card"><div class="gate-art">${U.pizzaSVG(M.defaultPizzaConfig(M.PROD['p-lucy']))}</div><div><span class="eyebrow">MOD Rewards</span><h2>Join to earn and redeem</h2>
+    return pageHead(title) + `<div class="gate card"><div class="gate-art">${U.artFor(M.PROD['p-modgherita'])}</div><div><span class="eyebrow">MOD Rewards</span><h2>Join to earn and redeem</h2>
       <p>Guests can order, track and get support without joining. Points, wallet funds, service credit, member coupons and the member pass are for members.</p>
       <div class="btn-row"><a class="btn btn-primary" href="#/login">Sign in</a><a class="btn btn-outline" href="#/login?join=1">Join MOD Rewards</a></div>
       <p class="tiny muted">Passwordless sign-in with a one-time code by email or text.</p></div></div>`;
@@ -651,7 +655,7 @@
     if (!M.isMember()) return memberGate('Member pass');
     const j = M.J(); const tier = M.tierOf(j);
     return `${pageHead('Member pass', 'Show this at the counter to earn on in-store orders.', '#/rewards')}
-      <div class="pass-wrap"><article class="pass"><div class="pass-top"><div class="logo-word light">MOD<span>rewards</span></div>${pill(esc(tier.name), 'pill-gold')}</div>
+      <div class="pass-wrap"><article class="pass"><div class="pass-top"><div class="pass-logo">${U.logoImg()}<span>Rewards</span></div>${pill(esc(tier.name), 'pill-gold')}</div>
         <div class="pass-name">${esc(j.profile.name || 'Member')}</div><div class="pass-pts"><strong>${j.points.toLocaleString()}</strong> pts available</div>
         <div class="pass-code">${U.barcodeSVG(j.memberId)}<span>${esc(j.memberId)}</span></div>
         <p class="pass-foot">${j.enrolled ? 'Enrolled member' : 'Sample rewards profile'} · Sample barcode for demonstration — not scannable.</p></article>
@@ -660,33 +664,71 @@
 
   /* ---------------- ACCOUNT ---------------- */
   V.account = function () {
-    const j = M.J(), member = M.isMember(), sh = M.S.shared; const p = j.profile;
-    const fe = st.fieldErrors || {};
+    const j = M.J(), member = M.isMember(), sh = M.S.shared; const p = j.profile; const C = M.CONFIG;
+    const fe = st.fieldErrors || {}; const ed = st.profEdit || null;
+    const comp = M.profileCompleteness(j); const fp = M.foodProfile(j);
+    const tier = member ? M.tierOf(j) : null;
+    const initials = (p.name || (member ? 'M' : 'G')).split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase();
     const f = (id, label, type, val, extra = '') => `<div class="field ${fe['p-' + id] ? 'has-err' : ''}"><label for="p-${id}">${label}</label><input id="p-${id}" name="${id}" type="${type}" value="${attr(val || '')}" ${extra} ${fe['p-' + id] ? `aria-invalid="true" aria-describedby="p-${id}-e"` : ''}>${fe['p-' + id] ? `<p class="err" id="p-${id}-e">${esc(fe['p-' + id])}</p>` : ''}</div>`;
-    const link = (href, ic, t, s) => `<a class="mini-link" href="${href}">${icon(ic)}<span><strong>${t}</strong><small>${s}</small></span>${icon('chevR')}</a>`;
-    return `${pageHead('Account', member ? `${esc(p.name)} · ${j.enrolled ? 'Enrolled member' : 'Sample rewards profile'}` : 'Guest on this browser')}
-      <section class="journey-card card" aria-labelledby="jh">${member
-        ? `<div class="avatar lg" aria-hidden="true">${esc((p.name || 'M').slice(0, 1))}</div><div><h2 id="jh" class="h3">Signed in</h2><p class="small muted">${esc(p.name)} · ${esc(j.signedInWith ? j.signedInWith.value : p.email)}</p></div><button class="btn btn-outline" data-act="sign-out">Sign out</button>`
-        : `<div class="avatar lg guest" aria-hidden="true">${icon('user')}</div><div><h2 id="jh" class="h3">You’re ordering as a guest</h2><p class="small muted">Sign in with a one-time code to earn points, use your wallet and see your go-to orders.</p></div><a class="btn btn-primary" href="#/login">Sign in</a>`}
-        ${sh.groupCheckout ? '<p class="small warn-text" style="flex-basis:100%">Signing in or out is blocked while a group checkout is locked.</p>' : ''}</section>
-      <div class="two-col">
-        <section class="card"><h2 class="h3">${member ? 'Profile' : 'Guest contact details'}</h2>
-          <form data-form="profile" novalidate>
-            <div class="fgrid">${f('name', 'Full name', 'text', p.name, 'autocomplete="name"')}${f('email', 'Email', 'email', p.email, 'autocomplete="email"')}${f('phone', 'Phone', 'tel', p.phone, 'autocomplete="tel"')}${member ? f('birthday', 'Birthday <span class="opt">optional</span>', 'date', p.birthday) : ''}</div>
-            ${member ? `<label class="check-row"><input type="checkbox" name="marketing" ${p.marketing ? 'checked' : ''}><span>Email me offers and news from MOD <small class="muted">(optional — you can change this anytime)</small></span></label>` : ''}
-            <button class="btn btn-primary" type="submit">Save ${member ? 'profile' : 'details'}</button></form></section>
-        <aside>
-          ${member ? (!j.enrolled ? `<section class="card enroll-cta"><h2 class="h3">${icon('sparkle')}Finish enrollment</h2><p class="small">You’re using the sample rewards profile. Enroll to make it yours.</p><a class="btn btn-primary btn-sm" href="#/join">Enroll now</a></section>`
-            : `<section class="card"><h2 class="h3">${icon('check')}Enrolled</h2><p class="small muted">Member ID ${esc(j.memberId)}</p></section>`) : ''}
+    const row = (k, v, emptyText) => `<div class="prow"><dt>${k}</dt><dd>${v ? esc(v) : `<span class="muted">${emptyText || 'Not added'}</span>`}</dd></div>`;
+    const bday = p.birthday ? new Date(p.birthday + 'T00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : '';
+    const toggle = (k, label, sub, on, dis) => `<label class="switch-row"><input type="checkbox" data-act="pref-toggle" data-k="${k}" ${on ? 'checked' : ''} ${dis ? 'disabled' : ''}><span class="switch" aria-hidden="true"></span><span><strong>${label}</strong><small>${sub}</small></span></label>`;
+    const link = (href, ic, t, s2) => `<a class="mini-link" href="${href}">${icon(ic)}<span><strong>${t}</strong><small>${s2}</small></span>${icon('chevR')}</a>`;
+    const stat = (n, l, href) => `<a class="pstat" href="${href}"><strong>${n}</strong><span>${l}</span></a>`;
+
+    const personal = ed === 'personal'
+      ? `<form data-form="profile" novalidate class="pform"><div class="fgrid two">${f('name', 'Full name', 'text', p.name, 'autocomplete="name"')}${f('phone', 'Mobile number', 'tel', p.phone, 'autocomplete="tel" inputmode="tel"')}</div>
+          <div class="fgrid two">${f('email', 'Email', 'email', p.email, 'autocomplete="email"')}${member ? f('birthday', 'Birthday <span class="optl">for a birthday treat</span>', 'date', p.birthday) : ''}</div>
+          <div class="btn-row"><button class="btn btn-primary" type="submit">Save changes</button><button class="btn btn-ghost" type="button" data-act="prof-edit" data-v="">Cancel</button></div></form>`
+      : `<dl class="pdl">${row('Full name', p.name)}${row('Email', p.email)}${row('Mobile', p.phone)}${member ? row('Birthday', bday, 'Add for a birthday treat') : ''}</dl>`;
+
+    const food = ed === 'food'
+      ? `<form data-form="food-profile" novalidate class="pform">
+          <fieldset><legend>Allergies</legend><p class="tiny muted">We’ll pre-select these at checkout and flag items that contain them.</p>
+            <div class="chip-row">${C.allergens.map(a => `<label class="chip-check alg"><input type="checkbox" name="allergens" value="${a}" ${fp.allergens.includes(a) ? 'checked' : ''}><span>${a}</span></label>`).join('')}</div>
+            <div class="field"><label for="p-anote">Other allergies or notes <span class="optl">optional</span></label><input id="p-anote" name="allergyNote" maxlength="120" value="${attr(p.allergyNote || '')}" placeholder="e.g. mustard, celery"></div></fieldset>
+          <fieldset><legend>Dietary restrictions</legend><div class="diet-grid">${C.diets.map(d => `<label class="diet-opt"><input type="checkbox" name="diets" value="${d.id}" ${fp.diets.includes(d.id) ? 'checked' : ''}><span class="diet-check" aria-hidden="true">${icon('check')}</span><span><strong>${d.name}</strong><small>${d.desc}</small></span></label>`).join('')}</div></fieldset>
+          <p class="small warn-text">${icon('info')}Our kitchens share equipment and ingredients. Your preferences help us flag items, but we can’t guarantee an allergen-free meal.</p>
+          <div class="btn-row"><button class="btn btn-primary" type="submit">Save preferences</button><button class="btn btn-ghost" type="button" data-act="prof-edit" data-v="">Cancel</button></div></form>`
+      : `<div class="food-view">
+          <div><h4>Allergies</h4>${fp.allergens.length ? `<div class="tag-row">${fp.allergens.map(a => `<span class="tag tag-alg">${icon('alert')}${esc(a)}</span>`).join('')}</div>` : `<p class="muted small">${p.foodReviewed ? 'No known allergies' : 'None added'}</p>`}${p.allergyNote ? `<p class="small">Also: ${esc(p.allergyNote)}</p>` : ''}</div>
+          <div><h4>Dietary restrictions</h4>${fp.diets.length ? `<div class="tag-row">${fp.diets.map(id => `<span class="tag tag-diet">${icon('leaf')}${esc((C.diets.find(d => d.id === id) || {}).name || id)}</span>`).join('')}</div>` : `<p class="muted small">${p.foodReviewed ? 'No restrictions' : 'None added'}</p>`}</div>
+          <p class="tiny muted">Used to pre-fill checkout, filter the menu and flag items. Kept on this device only.</p></div>`;
+
+    return `<section class="prof-hero">
+        <div class="ph-main"><div class="ph-avatar ${member ? '' : 'guest'}" aria-hidden="true">${member ? esc(initials) : icon('user')}</div>
+          <div class="ph-id">${h1(member ? esc(p.name || 'Member') : (p.name ? esc(p.name) : 'Guest'))}
+            <p>${member ? `${V.fragments.pill(esc(tier.name) + ' member', 'pill-gold')} <span>${j.enrolled ? 'MOD Rewards member' : 'Sample rewards profile'}${j.signedInWith ? ` · signed in with ${j.signedInWith.channel === 'email' ? 'email' : 'SMS'}` : ''}</span>` : '<span>Ordering as a guest on this device</span>'}</p></div>
+          <div class="ph-act">${member ? '<button class="btn btn-glass btn-sm" data-act="sign-out">Sign out</button>' : '<a class="btn btn-white btn-sm" href="#/login">Sign in or join</a>'}</div></div>
+        <div class="ph-foot">
+          ${member ? `<div class="pstats">${stat(j.points.toLocaleString(), 'Points', '#/rewards')}${stat(money(j.wallet.gift), 'Wallet', '#/wallet')}${stat(j.orders.length, 'Orders', '#/orders?tab=all')}${stat(j.savedPizzas.length, 'Saved pizzas', '#/favorites')}</div>` : `<div class="pstats">${stat(j.orders.length, 'Orders', '#/orders?tab=all')}${stat(j.favorites.length, 'Favorites', '#/favorites')}${stat(j.addresses.length, 'Addresses', '#/addresses')}</div>`}
+          <div class="pcomp"><div class="pcomp-top"><span>Profile ${comp.pct}% complete</span>${comp.missing.length ? `<small>Add: ${esc(comp.missing.join(', '))}</small>` : '<small>All set</small>'}</div><div class="meter light" role="progressbar" aria-label="Profile completeness" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${comp.pct}"><span style="width:${comp.pct}%"></span></div>
+            ${member && !j.claims.profile ? (p.name && p.email && p.phone && p.birthday ? `<small>Profile bonus ready — <a href="#/rewards" style="color:#fff">claim +${C.profileBonus} pts</a></small>` : `<small>Finish name, email, phone and birthday to earn +${C.profileBonus} pts.</small>`) : ''}</div>
+        </div>
+      </section>
+      ${sh.groupCheckout ? V.fragments.note('Signing in or out is blocked while a group checkout is locked.', 'warn') : ''}
+      ${member && !j.enrolled ? V.fragments.note('You’re using the sample rewards profile. <a href="#/join">Complete enrollment</a> to make it yours.', 'info') : ''}
+      <div class="prof-grid">
+        <div class="prof-main">
+          <section class="card psect" aria-labelledby="ps-personal"><header class="psect-head"><div class="psect-ico">${icon('user')}</div><div><h2 id="ps-personal" class="h3">Personal information</h2><p class="small muted">${member ? 'Used for your receipts and rewards' : 'Remembered on this device for faster checkout'}</p></div>${ed !== 'personal' ? '<button class="btn btn-sm btn-outline" data-act="prof-edit" data-v="personal">' + icon('edit') + 'Edit</button>' : ''}</header>${personal}</section>
+          <section class="card psect" aria-labelledby="ps-food"><header class="psect-head"><div class="psect-ico food">${icon('leaf')}</div><div><h2 id="ps-food" class="h3">Allergies & dietary restrictions</h2><p class="small muted">Help us flag items and prepare your order with care</p></div>${ed !== 'food' ? '<button class="btn btn-sm btn-outline" data-act="prof-edit" data-v="food">' + icon('edit') + 'Edit</button>' : ''}</header>${food}</section>
+          <section class="card psect" aria-labelledby="ps-notif"><header class="psect-head"><div class="psect-ico notif">${icon('mail')}</div><div><h2 id="ps-notif" class="h3">Notifications & privacy</h2><p class="small muted">Choose what we send you (simulated — nothing is sent)</p></div></header>
+            <div class="toggles">${toggle('notifyOrders', 'Order updates', 'Status changes for your orders', p.notifyOrders !== false)}${toggle('marketing', 'Offers & news by email', member ? 'Deals, new pizzas and member perks' : 'Sign in to get offers', !!p.marketing, !member)}${toggle('notifyOffers', 'Deal alerts on this device', 'Occasional notifications about local offers', !!p.notifyOffers)}</div></section>
+        </div>
+        <aside class="prof-side">
+          ${member ? `<section class="card pside-rewards"><span class="eyebrow">MOD Rewards</span><div class="psr-pts"><strong>${j.points.toLocaleString()}</strong> pts</div>
+              <div class="meter sm" role="progressbar" aria-label="Progress to a free pizza" aria-valuemin="0" aria-valuemax="${C.pizzaRewardCost}" aria-valuenow="${Math.min(j.points, C.pizzaRewardCost)}"><span style="width:${Math.min(100, j.points / C.pizzaRewardCost * 100)}%"></span></div>
+              <p class="small muted">${j.points >= C.pizzaRewardCost ? 'Free pizza unlocked' : `${(C.pizzaRewardCost - j.points).toLocaleString()} pts to a free pizza`}</p>
+              <div class="btn-row"><a class="btn btn-sm btn-primary" href="#/rewards">Redeem</a><a class="btn btn-sm btn-outline" href="#/pass">${icon('card')}Pass</a></div></section>`
+            : `<section class="card pside-cta"><div class="psect-ico">${icon('star')}</div><h2 class="h3">Earn on every order</h2><p class="small muted">${C.pointsPerDollar} pts per $1, a free pizza at ${C.pizzaRewardCost.toLocaleString()} pts, wallet and member-only deals.</p><a class="btn btn-primary btn-block" href="#/login?join=1">Join MOD Rewards</a></section>`}
           <nav class="mini-links" aria-label="Account shortcuts">
             ${link('#/addresses', 'pin', 'Saved addresses', `${j.addresses.length} saved`)}${link('#/favorites', 'heart', 'Favorites & saved pizzas', `${j.favorites.length} favorites${member ? ` · ${j.savedPizzas.length} pizzas` : ''}`)}
             ${link('#/orders?tab=all', 'receipt', 'Orders & receipts', `${j.orders.length} orders`)}${link('#/offers?tab=saved', 'tag', 'Saved offers', `${j.savedOffers.length} saved`)}${link('#/groups', 'users', 'Group orders', 'Host-paid group orders')}
-            ${member ? link('#/rewards', 'star', 'Rewards', `${j.points.toLocaleString()} pts`) + link('#/wallet', 'wallet', 'Wallet', money(j.wallet.gift)) + link('#/pass', 'card', 'Member pass', 'Barcode & ID') + link('#/activity', 'clock', 'Activity', 'Points & wallet history') : ''}
+            ${member ? link('#/wallet', 'wallet', 'Wallet', money(j.wallet.gift)) + link('#/activity', 'clock', 'Activity', 'Points & wallet history') : ''}
           </nav>
-          <section class="card subtle"><h2 class="h3">Demo data</h2><p class="small muted">Everything is stored in this browser${M.storageOK() ? '' : ' (storage unavailable — using memory only)'}.</p><button class="btn btn-sm btn-outline danger" data-act="reset-demo">Reset all demo data</button></section>
+          <section class="card subtle"><h2 class="h3">Demo data</h2><p class="small muted">Stored in this browser${M.storageOK() ? '' : ' (storage unavailable — memory only)'}.</p><button class="btn btn-sm btn-outline danger" data-act="reset-demo">Reset all demo data</button></section>
         </aside></div>`;
   };
-
   V.login = function (q) {
     const L = st.login || (st.login = { channel: 'email', step: 'enter', value: '', error: '' });
     const otp = M.S.shared.otp;
@@ -742,7 +784,7 @@
         <form class="card" data-form="address" novalidate><h2 class="h3">${editing ? 'Edit address' : 'Add an address'}</h2>
           <div class="field ${fe['a-label'] ? 'has-err' : ''}"><label for="a-label">Name</label><input id="a-label" name="label" placeholder="Home, Work…" value="${attr(editing ? editing.label : '')}">${fe['a-label'] ? `<p class="err">${esc(fe['a-label'])}</p>` : ''}</div>
           <div class="field ${fe['a-line'] ? 'has-err' : ''}"><label for="a-line">Address</label><input id="a-line" name="line" autocomplete="street-address" value="${attr(editing ? editing.line : '')}">${fe['a-line'] ? `<p class="err">${esc(fe['a-line'])}</p>` : ''}</div>
-          <div class="field"><label for="a-ins">Delivery instructions <span class="opt">optional</span></label><textarea id="a-ins" name="instructions" rows="2">${esc(editing ? editing.instructions : '')}</textarea></div>
+          <div class="field"><label for="a-ins">Delivery instructions <span class="optl">optional</span></label><textarea id="a-ins" name="instructions" rows="2">${esc(editing ? editing.instructions : '')}</textarea></div>
           <div class="btn-row"><button class="btn btn-primary" type="submit">${editing ? 'Save changes' : 'Add address'}</button>${editing ? '<button type="button" class="btn btn-ghost" data-act="addr-cancel">Cancel</button>' : ''}</div>
           <p class="tiny muted">Local text entry only — no live address verification.</p></form></div>`;
   };
@@ -852,7 +894,7 @@
           <p class="tiny muted">Saved on this browser. A refund request goes to review — it isn’t an instant cancellation. Partial refunds aren’t supported in this prototype.</p></form>
         <section class="card" id="feedback"><h2 class="h3">${icon('star')}${o.feedback ? 'Your rating' : 'Rate this order'}</h2>
           ${canRate ? `<form data-form="feedback" data-id="${o.id}"><fieldset class="stars"><legend class="sr-only">Rating</legend>${[1, 2, 3, 4, 5].map(n => `<input type="radio" id="star${n}" name="rating" value="${n}" ${fb.rating === n ? 'checked' : ''}><label for="star${n}" title="${n} star${n > 1 ? 's' : ''}"><span class="sr-only">${n} star${n > 1 ? 's' : ''}</span>${icon('star')}</label>`).join('')}</fieldset>
-            <div class="field"><label for="fb-c">Comments <span class="opt">optional</span></label><textarea id="fb-c" name="comment" rows="3">${esc(fb.comment || '')}</textarea></div>
+            <div class="field"><label for="fb-c">Comments <span class="optl">optional</span></label><textarea id="fb-c" name="comment" rows="3">${esc(fb.comment || '')}</textarea></div>
             <button class="btn btn-primary" type="submit">${o.feedback ? 'Update feedback' : 'Submit feedback'}</button>${o.feedback ? `<span class="tiny muted"> Last saved ${new Date(o.feedback.at).toLocaleString()}</span>` : ''}</form>`
             : `<p class="muted small">${o.canceled ? 'Canceled orders can’t be rated.' : 'You can rate this order once it’s completed.'}</p>`}
         </section></div>

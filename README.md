@@ -36,7 +36,8 @@ Serving is recommended for group-order participant windows (same-browser sync us
 - **Refund request:** reviewed automatically after about 20 seconds (simulated outcome).
 - **Codes:** `WELCOME20`, `PICKUP5`, `2PIZZA25`, `SWEETDEAL`, `MILEHIGH` (Denver only), `MEMBER10` (member), `SUMMER15` (expired).
 - **Rewards:** receipt claim `DEMO40`; gift card `MODGIFT25`.
-- **Stores:** Bellevue is out of Tristan and artichokes; West Loop is out of bacon and Greek salad; South Congress is pickup only; Union Square is paused.
+- **Stores:** Bellevue is out of Perfect Pesto and artichokes; West Loop is out of bacon and the Mediterranean salad; South Congress is pickup only; Union Square is paused. Mike’s Favorite is shown as sold out.
+- **Menu & images:** items follow modpizza.com/menu (prices are samples). Product photos and the logo load from modpizza.com and Wikimedia; offline, drawn illustrations are shown instead.
 - **Group order:** create a group, add people, “Open as …” opens a participant window that syncs while the host window is open.
 - **Separate storage:** add `?storage=mobile` to the URL for an independent demo data set (e.g. a separate mobile-view prototype).
 - **Reset:** Account → Reset all demo data.

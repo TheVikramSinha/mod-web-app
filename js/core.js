@@ -11,13 +11,14 @@
   const REWARD = Object.fromEntries(REWARDS.map(r => [r.id, r]));
   const SIZE = Object.fromEntries(CONFIG.sizes.map(s => [s.id, s]));
   const CRUST = Object.fromEntries(CONFIG.crusts.map(s => [s.id, s]));
+  const SALAD_SIZE = Object.fromEntries(CONFIG.saladSizes.map(s => [s.id, s]));
 
   const clone = (o) => (o === undefined ? undefined : JSON.parse(JSON.stringify(o)));
   const uid = (p = '') => p + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
   const digits = (n) => String(Math.floor(Math.random() * Math.pow(10, n))).padStart(n, '0');
 
   /* ---------------- Storage (safe) ---------------- */
-  const PREFIX = window.MOD_STORAGE_PREFIX || ((new URLSearchParams(location.search).get('storage') === 'mobile') ? 'modproto.mobile.v1.' : 'modproto.v1.');
+  const PREFIX = window.MOD_STORAGE_PREFIX || ((new URLSearchParams(location.search).get('storage') === 'mobile') ? 'modproto.mobile.v2.' : 'modproto.v2.');
   const memory = {};
   let storageOK = true;
   try { localStorage.setItem(PREFIX + '__t', '1'); localStorage.removeItem(PREFIX + '__t'); } catch (e) { storageOK = false; }
@@ -43,7 +44,7 @@
     parked: null, groupCheckout: null, draft: {}
   });
   const emptyJourney = () => ({
-    profile: { name: '', email: '', phone: '', birthday: '', marketing: false },
+    profile: { name: '', email: '', phone: '', birthday: '', marketing: false, allergens: [], allergyNote: '', diets: [], notifyOrders: true, notifyOffers: false },
     addresses: [], selectedAddressId: null, favorites: [], savedPizzas: [], savedOffers: [], assignedOffers: [],
     orders: [], goTo: null, activity: [], points: 0, lifetime: 0, wallet: { gift: 0, credit: 0 }, claims: {}, enrolled: false
   });
@@ -59,7 +60,7 @@
       { id: 'a2', label: 'Work', line: '1201 2nd Ave, Floor 9, Seattle, WA 98101', instructions: 'Check in at the front desk.' }
     ];
     j.selectedAddressId = 'a1';
-    j.favorites = ['p-maddog', 'x-nonamecake'];
+    j.favorites = ['p-carnivore', 'x-nonamecake'];
     j.savedOffers = ['o-member'];
     j.assignedOffers = ['o-member'];
     j.savedPizzas = [{ id: 'sp1', name: 'Friday Night Spicy', productId: 'p-cyo', savedAt: Date.now() - 864e5 * 9,
@@ -190,7 +191,7 @@
   function defaultConfig(p) {
     if (!p.builder) return null;
     if (p.builder === 'pizza') return defaultPizzaConfig(p);
-    if (p.builder === 'salad') return { greens: p.recipe.greens, dressing: p.recipe.dressing, toppings: p.recipe.toppings.slice() };
+    if (p.builder === 'salad') return { size: 'mod', greens: p.recipe.greens, dressing: p.recipe.dressing, toppings: p.recipe.toppings.slice() };
     if (p.builder === 'kids') return { topping: 'cheese', drink: 'apple-juice' };
     if (p.builder === 'cakepop') return { f1: 'pink-vanilla', f2: 'pumpkin-spice' };
     return null;
@@ -246,6 +247,7 @@
     const p = PROD[line.productId];
     let u = basePrice(p, store);
     if (p.builder === 'pizza' && line.config) u += (SIZE[line.config.size] || SIZE.regular).adj + (CRUST[line.config.crust] || CRUST.original).adj;
+    if (p.builder === 'salad' && line.config && line.config.size) u += (SALAD_SIZE[line.config.size] || SALAD_SIZE.mod).adj;
     return Math.max(0, u);
   }
   function lineIssues(line, store, mode) {
@@ -289,6 +291,7 @@
       });
     } else if (p.builder === 'salad') {
       const d = p.recipe;
+      if (c.size && c.size !== 'mod') out.push(`${SALAD_SIZE[c.size].name} size`);
       if (c.greens !== d.greens) out.push(`Greens: ${ING[c.greens].name}`);
       if (c.dressing !== d.dressing) out.push(c.dressing === 'no-dressing' ? 'No dressing' : `Dressing: ${ING[c.dressing].name}`);
       d.toppings.filter(t => !c.toppings.includes(t)).forEach(t => out.push(`No ${ING[t].name}`));
@@ -446,10 +449,10 @@
     const inCart = new Set(S.shared.cart.lines.map(l => l.productId));
     const cats = new Set(S.shared.cart.lines.map(l => PROD[l.productId] && PROD[l.productId].cat));
     const order = [];
-    if (!cats.has('desserts')) order.push('x-nonamecake', 'x-cookie', 'x-cinnamon');
-    if (!cats.has('sides')) order.push('d-garlic', 'd-cheesy');
-    if (!cats.has('beverages')) order.push('b-lemonade', 'b-tea', 'b-rootbeer');
-    order.push('x-cookie', 'b-water', 'd-garlic');
+    if (!cats.has('desserts')) order.push('x-nonamecake', 'x-cinnamod');
+    if (!cats.has('sides')) order.push('d-garlic', 'd-strips');
+    if (!cats.has('beverages')) order.push('b-lemonade', 'b-tea', 'b-fountain');
+    order.push('x-nonamecake', 'b-water', 'd-garlic');
     if (!S.shared.cart.lines.length) return null;
     for (const id of order) { const p = PROD[id]; if (!inCart.has(id) && !productIssue(p, store, mode) && !p.builder) return p; }
     return null;
@@ -776,6 +779,31 @@
     commit('journey'); return true;
   }
 
+  /* -------- Food profile: allergies & dietary restrictions -------- */
+  const DAIRY = new Set(['mozzarella', 'asiago', 'parmesan', 'cheddar', 'feta', 'gorgonzola', 'ricotta', 'white-sauce', 'buffalo-sauce', 'pesto-sauce', 'pesto-finish', 'ranch-finish', 'sriracha-ranch', 'buffalo-finish', 'caesar', 'ranch']);
+  const PORK = new Set(['pepperoni', 'sausage', 'bacon', 'canadian-bacon', 'salami']);
+  const WHEAT_CATS = new Set(['pizzas', 'sides', 'kids']);
+  function foodProfile(j) { const p = (j || J()).profile; return { allergens: (p.allergens || []).filter(a => a !== 'None'), diets: p.diets || [], note: p.allergyNote || '' }; }
+  // Returns plain-language warnings for a cart line / builder config against the profile. Advisory only.
+  function profileWarnings(line, j) {
+    const fp = foodProfile(j); if (!fp.allergens.length && !fp.diets.length) return [];
+    const p = PROD[line.productId]; if (!p) return [];
+    const ids = p.builder ? lineIngredients(line) : [];
+    const diet = dietOf(line); const out = [];
+    const hasDairy = p.builder ? ids.some(id => DAIRY.has(id)) || (p.builder === 'kids' && ['milk', 'choc-milk'].includes(line.config.drink)) : (p.diet === 'veg' && ['sides', 'desserts', 'extras'].includes(p.cat));
+    if (fp.diets.includes('vegan') && diet !== 'vegan') out.push('Not vegan');
+    else if (fp.diets.includes('vegetarian') && diet === 'nonveg') out.push('Contains meat');
+    if (fp.diets.includes('no-pork') && ids.some(id => PORK.has(id))) out.push('Contains pork');
+    if ((fp.diets.includes('dairy-free') || fp.allergens.includes('Milk')) && hasDairy) out.push(fp.allergens.includes('Milk') ? 'Contains milk (allergy)' : 'Contains dairy');
+    if (fp.allergens.includes('Wheat') && WHEAT_CATS.has(p.cat) && !(p.builder === 'pizza' && line.config && ['cauli', 'gf'].includes(line.config.crust))) out.push('Contains wheat (allergy)');
+    if (fp.diets.includes('gluten-conscious') && p.builder === 'pizza' && line.config && !['cauli', 'gf'].includes(line.config.crust)) out.push('Thin crust contains gluten — try Cauliflower or Gluten-friendly');
+    return out;
+  }
+  function profileCompleteness(j) {
+    const p = (j || J()).profile; const checks = [['Name', !!p.name], ['Email', !!p.email], ['Phone', !!p.phone], ['Birthday', !!p.birthday], ['Food preferences', !!((p.allergens || []).length || (p.diets || []).length || p.foodReviewed)]];
+    return { pct: Math.round(checks.filter(c => c[1]).length / checks.length * 100), missing: checks.filter(c => !c[1]).map(c => c[0]) };
+  }
+
   /* -------- Store search by ZIP / location -------- */
   function geocodeZip(zip) {
     const z = (zip || '').trim(); const D = window.MOD_DATA;
@@ -897,10 +925,9 @@
         refund: opts.canceled ? { status: 'approved', requestedAt: created + 6e5, resolvedAt: created + 9e5, amount: subtotal + fee + tax + tip } : null,
         canceled: !!opts.canceled, canceledAt: opts.canceled ? created + 9e5 : null, group: null, completedAt: created + 33e5 };
     };
-    const maddog = PROD['p-maddog'];
-    const o1 = mk(3, [{ productId: 'p-maddog', config: defaultPizzaConfig(maddog), qty: 1 }, { productId: 'p-cyo', config: j.savedPizzas[0].config, qty: 1 }, { productId: 'x-nonamecake', config: null, qty: 2 }, { productId: 'b-lemonade', config: null, qty: 2 }], { mode: 'delivery', feedback: { rating: 5, comment: 'Hot and fast. Loved the extra pepperoni.', at: now - 864e5 * 3 } });
-    const o2 = mk(12, [{ productId: 'p-garden', config: defaultPizzaConfig(PROD['p-garden']), qty: 1 }, { productId: 's-italian', config: defaultConfig(PROD['s-italian']), qty: 1 }], { mode: 'pickup' });
-    const o3 = mk(20, [{ productId: 'p-caspian', config: defaultPizzaConfig(PROD['p-caspian']), qty: 2 }], { mode: 'delivery', canceled: true });
+    const o1 = mk(3, [{ productId: 'p-carnivore', config: defaultPizzaConfig(PROD['p-carnivore']), qty: 1 }, { productId: 'p-cyo', config: j.savedPizzas[0].config, qty: 1 }, { productId: 'x-nonamecake', config: null, qty: 2 }, { productId: 'b-lemonade', config: null, qty: 2 }], { mode: 'delivery', feedback: { rating: 5, comment: 'Hot and fast. Loved the extra pepperoni.', at: now - 864e5 * 3 } });
+    const o2 = mk(12, [{ productId: 'p-vegout', config: defaultPizzaConfig(PROD['p-vegout']), qty: 1 }, { productId: 's-italian', config: defaultConfig(PROD['s-italian']), qty: 1 }], { mode: 'pickup' });
+    const o3 = mk(20, [{ productId: 'p-firebird', config: defaultPizzaConfig(PROD['p-firebird']), qty: 2 }], { mode: 'delivery', canceled: true });
     o3.support.push({ id: 'SR-' + digits(5), at: o3.createdAt + 6e5, type: 'refund', message: 'Ordered by mistake — please cancel.', status: 'Refund approved (simulated)' });
     j.orders = [o1, o2, o3];
     j.goTo = o1.id;
@@ -917,6 +944,9 @@
   /* -------- Init (after all helpers are defined) -------- */
   if (!S.journeys.member) { S.journeys.member = defaultMember(); seedMemberOrders(S.journeys.member); save('member', S.journeys.member); }
   S.shared = Object.assign(defaultShared(), S.shared);
+  // Drop anything that refers to items no longer on the menu.
+  S.shared.cart.lines = (S.shared.cart.lines || []).filter(l => PROD[l.productId]);
+  ['guest', 'member'].forEach(k => { const jj = S.journeys[k]; if (jj) { jj.favorites = (jj.favorites || []).filter(id => PROD[id]); jj.savedPizzas = (jj.savedPizzas || []).filter(sp => PROD[sp.productId]); } });
   ['guest', 'member'].forEach(k => { S.journeys[k] = Object.assign(emptyJourney(), S.journeys[k]); });
 
   window.MOD = {
@@ -929,7 +959,7 @@
     addToCart, updateLine, removeLine, setQty, cartCount, suggestion, sameConfig,
     previewStoreChange, applyStore, setMode, setSchedule, switchJourney,
     stageOf, STAGE_LABEL, canAmend, etaOf, validateCheckout, placeOrder, findOrder, reorder, amendOrder,
-    addSupport, setFeedback, tick, cancelOrder, imHere, geocodeZip, milesBetween, storesNear, fmtMiles, setSearchLoc, setPickupMethod, setDropoff, fixPickupMethod, requestOtp, verifyOtp, signOut, challengeProgress, claim, topUp, activity,
+    addSupport, setFeedback, tick, cancelOrder, imHere, foodProfile, profileWarnings, profileCompleteness, geocodeZip, milesBetween, storesNear, fmtMiles, setSearchLoc, setPickupMethod, setDropoff, fixPickupMethod, requestOtp, verifyOtp, signOut, challengeProgress, claim, topUp, activity,
     createGroup, getGroup, groupLocked, participantSubtotal, groupCheckIssues, startGroupCheckout, reopenGroup, cancelGroup, resetDemo
   };
 })();

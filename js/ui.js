@@ -62,6 +62,7 @@
       case 'square': return `<rect x="${x - 4.5 * k}" y="${y - 4.5 * k}" width="${9 * k}" height="${9 * k}" rx="${1.6 * k}" fill="${c}" transform="rotate(${rot} ${x} ${y})" stroke="rgba(0,0,0,.12)"/>`;
       case 'leaf': return `<ellipse cx="${x}" cy="${y}" rx="${7 * k}" ry="${3.4 * k}" fill="${c}" transform="rotate(${rot} ${x} ${y})"/>`;
       case 'half': return `<path d="M${x - 6 * k} ${y} a${6 * k} ${6 * k} 0 0 1 ${12 * k} 0 z" fill="${c}" transform="rotate(${rot} ${x} ${y})" stroke="rgba(0,0,0,.15)"/>`;
+      case 'drizzle': return `<path d="M${x - 14 * k} ${y} q ${3.5 * k} ${-5 * k} ${7 * k} 0 t ${7 * k} 0 t ${7 * k} 0 t ${7 * k} 0" fill="none" stroke="${c}" stroke-width="${2.2 * k}" stroke-linecap="round" transform="rotate(${rot} ${x} ${y})" opacity=".9"/>`;
       default: return `<circle cx="${x}" cy="${y}" r="${4.4 * k}" fill="${c}" stroke="rgba(0,0,0,.15)"/>`;
     }
   }
@@ -98,7 +99,7 @@
     });
     tops.forEach((t) => {
       const ing = M.ING[t.id]; const pl = side || t.place || 'whole';
-      const n = Math.round(COUNT[t.amt || 'regular'] * (pl === 'whole' ? 1 : 0.6));
+      const n = Math.round(COUNT[t.amt || 'regular'] * (pl === 'whole' ? 1 : 0.6) * (ing.type === 'finish' ? 0.45 : 1));
       scatter(t.id, pl, n, 66).forEach(([x, y, rot]) => { out += shape(ing, x.toFixed(1), y.toFixed(1), rot, 1); });
     });
     return out;
@@ -132,7 +133,25 @@
     return `<svg viewBox="0 0 200 200" aria-hidden="true"><ellipse cx="100" cy="172" rx="70" ry="10" fill="rgba(35,31,32,.1)"/><path d="M30 95h140c0 45-30 72-70 72S30 140 30 95z" fill="#fff" stroke="#e8e1dc" stroke-width="3"/>
       <ellipse cx="100" cy="95" rx="70" ry="22" fill="#5aa54a"/><ellipse cx="100" cy="92" rx="60" ry="15" fill="#7dc163"/>${dots}<path d="M30 95h140" stroke="#e8e1dc" stroke-width="3"/></svg>`;
   }
+  // Product art: MOD's photo for the standard recipe; a drawn illustration for customized items or if the photo can't load.
   function artFor(p, cfg) {
+    if (p && p.img && (!cfg || M.sameConfig(cfg, M.defaultConfig(p)) || (p.builder === 'salad' && cfg && M.sameConfig(Object.assign({}, cfg, { size: 'mod' }), M.defaultConfig(p))))) {
+      return `<img class="photo" src="${attr(p.img)}" data-fb="${attr(p.imgFallback || '')}" data-pid="${attr(p.id)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="UI.imgErr(this)">`;
+    }
+    return drawnArt(p, cfg);
+  }
+  function imgErr(el) {
+    if (el.dataset.fb && !el.dataset.tried) { el.dataset.tried = '1'; el.src = el.dataset.fb; return; }
+    const p = M.PROD[el.dataset.pid]; const wrap = document.createElement('span'); wrap.className = 'art-fb'; wrap.innerHTML = p ? drawnArt(p) : '';
+    el.replaceWith(wrap);
+  }
+  function shieldSVG() {
+    return `<svg viewBox="0 0 120 116" class="logo-svg" role="img" aria-label="MOD Pizza"><path d="M60 2 L72 10 L100 5 L112 14 L114 54 C114 84 92 102 60 114 C28 102 6 84 6 54 L8 14 L20 5 L48 10 Z" fill="#a8262b"/><path d="M60 2 L72 10 L100 5 L112 14 L114 54 C114 84 92 102 60 114 Z" fill="#7d2228"/><text x="60" y="70" text-anchor="middle" font-family="Arial Narrow, Arial, sans-serif" font-weight="700" font-size="40" fill="#fff" letter-spacing="-1">MOD</text></svg>`;
+  }
+  function logoImg(cls = '') {
+    return `<img class="logo-img ${cls}" src="${attr(M.CONFIG.logoUrl)}" alt="MOD Pizza" width="44" height="42" referrerpolicy="no-referrer" onerror="this.outerHTML=UI.shieldSVG()">`;
+  }
+  function drawnArt(p, cfg) {
     if (p.cat === 'pizzas') return pizzaSVG(cfg || M.defaultConfig(p));
     if (p.cat === 'salads') {
       const tops = (cfg || p.recipe).toppings.map(id => (M.ING[id] && M.ING[id].color) || '#f4c430').slice(0, 5);
@@ -141,7 +160,7 @@
     if (p.cat === 'kids') return `<svg viewBox="0 0 200 200" aria-hidden="true"><g transform="translate(14 30) scale(.62)">${pizzaSVG({ size: 'regular', crust: 'original', split: false, whole: { sauce: { id: 'tomato-sauce', amt: 'regular' }, items: [{ id: 'mozzarella', amt: 'regular' }].concat(cfg && cfg.topping && cfg.topping !== 'cheese' ? [{ id: cfg.topping, amt: 'regular' }] : []) } }).replace('<svg', '<svg width="200" height="200"')}</g>
       <rect x="138" y="70" width="40" height="80" rx="8" fill="#f6c94c"/><rect x="138" y="70" width="40" height="18" rx="6" fill="#c4122f"/><rect x="152" y="50" width="4" height="26" fill="#231f20"/></svg>`;
     if (p.cat === 'beverages') {
-      const col = { 'b-lemonade': '#f7e27a', 'b-tea': '#a8642a', 'b-rootbeer': '#4a2516', 'b-water': '#cfe8f5', 'b-beer': '#e8b43a', 'b-wine': '#7a1730' }[p.id] || '#f7e27a';
+      const col = { 'b-lemonade': '#f7e27a', 'b-tea': '#a8642a', 'b-fountain': '#3b1d14', 'b-water': '#cfe8f5', 'b-beer': '#e8b43a', 'b-wine': '#7a1730' }[p.id] || '#f7e27a';
       if (p.id === 'b-wine') return `<svg viewBox="0 0 200 200" aria-hidden="true"><ellipse cx="100" cy="178" rx="40" ry="7" fill="rgba(35,31,32,.1)"/><path d="M70 40h60c0 45-12 70-30 70S70 85 70 40z" fill="#f3eeee" stroke="#d8cfcf" stroke-width="3"/><path d="M73 62h54c-3 28-12 44-27 44S76 90 73 62z" fill="${col}"/><rect x="97" y="108" width="6" height="56" fill="#d8cfcf"/><ellipse cx="100" cy="168" rx="28" ry="6" fill="#d8cfcf"/></svg>`;
       return `<svg viewBox="0 0 200 200" aria-hidden="true"><ellipse cx="100" cy="178" rx="44" ry="8" fill="rgba(35,31,32,.1)"/><path d="M62 40h76l-8 134H70z" fill="#fff" stroke="#e8e1dc" stroke-width="3"/><path d="M66 70h68l-6 100H72z" fill="${col}"/>
         <circle cx="86" cy="98" r="4" fill="rgba(255,255,255,.5)"/><circle cx="110" cy="122" r="3" fill="rgba(255,255,255,.45)"/><rect x="62" y="34" width="76" height="10" rx="4" fill="#c4122f"/><rect x="104" y="12" width="5" height="34" rx="2" fill="#231f20" transform="rotate(12 106 30)"/></svg>`;
@@ -166,7 +185,7 @@
     return '';
   }
   function catArt(cat) {
-    const p = M.PROD[{ pizzas: 'p-maddog', salads: 's-garden', sides: 'd-garlic', desserts: 'x-cakepop', kids: 'k-meal', beverages: 'b-lemonade', extras: 'e-ranch' }[cat]];
+    const p = M.PROD[{ pizzas: 'p-ogpep', salads: 's-italian', sides: 'd-garlic', desserts: 'x-nonamecake', kids: 'k-meal', beverages: 'b-fountain', extras: 'e-ranch' }[cat]];
     return p ? artFor(p) : '';
   }
 
@@ -245,5 +264,5 @@
   const dietBadge = (d) => `<span class="diet diet-${DIET[d].cls}"><span class="diet-dot" aria-hidden="true"></span>${DIET[d].label}</span>`;
 
   M.CAKEPOPS = Object.fromEntries(window.MOD_DATA.CAKEPOP_FLAVORS.map(f => [f.id, f]));
-  window.UI = { esc, attr, icon, pizzaSVG, artFor, catArt, barcodeSVG, announce, toast, openDialog, closeDialog, topDialog, dietBadge, DIET, reduceMotion };
+  window.UI = { esc, attr, icon, pizzaSVG, artFor, drawnArt, imgErr, logoImg, shieldSVG, catArt, barcodeSVG, announce, toast, openDialog, closeDialog, topDialog, dietBadge, DIET, reduceMotion };
 })();

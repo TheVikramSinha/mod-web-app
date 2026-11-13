@@ -63,7 +63,8 @@
     return `${opts.hideSauce ? '' : `<section class="bsect"><h3>Sauce</h3>${sauceBlock(ns, rec, o)}</section>`}
       <section class="bsect"><h3>Cheese <small>${rec.items.filter(i => M.ING[i.id].type === 'cheese').length} selected</small></h3>${itemRows(ns, rec, D.CHEESES, o)}</section>
       <section class="bsect"><h3>Meats</h3>${itemRows(ns, rec, meats, o)}</section>
-      <section class="bsect"><h3>Veggies & more</h3>${itemRows(ns, rec, veg, o)}</section>`;
+      <section class="bsect"><h3>Veggies & more</h3>${itemRows(ns, rec, veg, o)}</section>
+      <section class="bsect"><h3>Finishing sauces <small>drizzled after baking</small></h3>${itemRows(ns, rec, D.FINISHES, o)}</section>`;
   }
 
   /* ---------- Pizza builder view ---------- */
@@ -87,15 +88,17 @@
   function saladBuilder(p, store) {
     const c = B.config;
     const radio = (name, list, cur, act, label) => `<div class="opt-grid" role="radiogroup" aria-label="${label}">${list.map(id => { const out = M.ingOut(id, store); return `<button type="button" role="radio" aria-checked="${cur === id}" class="opt ${cur === id ? 'on' : ''}" data-act="${act}" data-v="${id}" ${out ? 'disabled' : ''}>${esc(M.ING[id].name)}${out ? '<small>Unavailable</small>' : ''}</button>`; }).join('')}</div>`;
-    return `<section class="bsect"><h3>Greens</h3>${radio('g', ['romaine', 'arugula-g', 'mixed'], c.greens, 's-greens', 'Greens')}</section>
-      <section class="bsect"><h3>Dressing</h3>${radio('d', ['caesar', 'balsamic', 'ranch', 'no-dressing'], c.dressing, 's-dressing', 'Dressing')}</section>
+    const sz = c.size || 'mod';
+    return `<section class="bsect"><h3>Size</h3><div class="opt-grid" role="radiogroup" aria-label="Salad size">${M.CONFIG.saladSizes.map(s => `<button type="button" role="radio" aria-checked="${sz === s.id}" class="opt big ${sz === s.id ? 'on' : ''}" data-act="s-size" data-v="${s.id}"><strong>${s.name}</strong><small>${s.sub}</small><small>${s.adj ? (s.adj > 0 ? '+' : '−') + money(Math.abs(s.adj)) : 'Base price'}</small></button>`).join('')}</div></section>
+      <section class="bsect"><h3>Greens</h3>${radio('g', ['romaine', 'mixed', 'arugula-g'], c.greens, 's-greens', 'Greens')}</section>
+      <section class="bsect"><h3>Dressing</h3>${radio('d', ['caesar', 'balsamic', 'champagne', 'oil-vinegar', 'ranch', 'no-dressing'], c.dressing, 's-dressing', 'Dressing')}</section>
       <section class="bsect"><h3>Toppings</h3><div class="chip-row">${D.SALAD_TOPPINGS.map(id => { const on = c.toppings.includes(id); const out = M.ingOut(id, store);
         return `<button type="button" class="chip tog ${on ? 'on' : ''}" aria-pressed="${on}" data-act="s-top" data-id="${id}" ${out ? 'disabled' : ''}>${on ? icon('check') : icon('plus')}${esc(M.ING[id].name)}${out ? ' · unavailable' : ''}</button>`; }).join('')}</div></section>`;
   }
   function kidsBuilder(p, store) {
     const c = B.config;
-    const tops = ['cheese'].concat(D.PIZZA_TOPPINGS);
-    return `<section class="bsect"><h3>Pizza topping <small>pick one</small></h3><div class="opt-grid" role="radiogroup" aria-label="Kids pizza topping">${tops.map(id => { const on = c.topping === id; const out = id !== 'cheese' && M.ingOut(id, store);
+    const tops = ['cheese', 'pepperoni'];
+    return `<section class="bsect"><h3>Mini pizza <small>cheese or pepperoni</small></h3><div class="opt-grid" role="radiogroup" aria-label="Kids pizza topping">${tops.map(id => { const on = c.topping === id; const out = id !== 'cheese' && M.ingOut(id, store);
         return `<button type="button" role="radio" aria-checked="${on}" class="opt ${on ? 'on' : ''}" data-act="k-top" data-v="${id}" ${out ? 'disabled' : ''}>${id === 'cheese' ? 'Cheese only' : esc(M.ING[id].name)}${out ? '<small>Unavailable</small>' : ''}</button>`; }).join('')}</div></section>
       <section class="bsect"><h3>Drink</h3><div class="opt-grid" role="radiogroup" aria-label="Kids drink">${D.KIDS_DRINKS.map(d => `<button type="button" role="radio" aria-checked="${c.drink === d.id}" class="opt ${c.drink === d.id ? 'on' : ''}" data-act="k-drink" data-v="${d.id}">${esc(d.name)}</button>`).join('')}</div></section>`;
   }
@@ -125,7 +128,8 @@
     const unit = M.unitPrice(line, st);
     const diet = M.dietOf(line);
     const custom = p.builder && !M.sameConfig(B.config, M.defaultConfig(p));
-    const art = p.builder === 'pizza' ? U.pizzaSVG(B.config, { label: `Illustration of your ${p.name} pizza — not a product photo` }) : U.artFor(p, B.config);
+    const showPhoto = p.img && !custom;
+    const art = showPhoto ? U.artFor(p) : p.builder === 'pizza' ? U.pizzaSVG(B.config, { label: `Illustration of your ${p.name} pizza — not a product photo` }) : U.artFor(p, B.config);
     const back = g ? `#/group/${g.id}` : B.edit ? '#/cart' : '#/menu?cat=' + p.cat;
     const verb = g ? (target.gedit ? 'Update' : `Add for ${gp ? gp.name : 'participant'}`) : B.edit ? 'Update cart' : 'Add to cart';
     const builderHtml = p.builder === 'pizza' ? pizzaBuilder(p, st) : p.builder === 'salad' ? saladBuilder(p, st) : p.builder === 'kids' ? kidsBuilder(p, st) : p.builder === 'cakepop' ? cakepopBuilder() : '';
@@ -135,20 +139,21 @@
       <a class="back-link" href="${back}">${icon('back')}<span>${g ? 'Back to group' : B.edit ? 'Back to cart' : 'Back to menu'}</span></a>
       <div class="builder ${p.builder ? '' : 'simple'}">
         <div class="b-visual"><div class="b-sticky">
-          <div class="b-art ${p.builder === 'pizza' ? 'is-pizza' : ''}">${art}</div>
-          ${p.builder === 'pizza' ? '<p class="tiny muted center">Illustrative preview — reflects your toppings, portions and placement. Not product photography.</p>' : ''}
+          <div class="b-art ${p.builder === 'pizza' && !showPhoto ? 'is-pizza' : ''} ${showPhoto ? 'has-photo' : ''}">${art}</div>
+          ${p.builder === 'pizza' ? `<p class="tiny muted center">${showPhoto ? 'Standard recipe photo. Customize it and we’ll switch to a live illustration of your build.' : 'Illustrative preview — reflects your toppings, portions and placement. Not product photography.'}</p>` : ''}
           ${descLines.length ? `<ul class="b-summary" aria-label="Your changes">${descLines.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : ''}
         </div></div>
         <div class="b-config">
           <header class="b-head"><span class="eyebrow">${esc(D.CATEGORIES.find(c => c.id === p.cat).name)}</span><h1 tabindex="-1">${esc(p.name)}</h1><p>${esc(p.desc)}</p>
             <div class="pcard-meta">${dietBadge(diet)}${diet !== p.diet ? `<span class="small muted">Standard recipe: ${U.DIET[p.diet].label}</span>` : ''}<span class="cal">${p.nutrition.cal} cal standard</span>${p.pickupOnly ? V.fragments.pill('Pickup only', 'pill-warn') : ''}</div>
             ${saved ? `<div class="note note-info">${icon('heart')}<div>Using saved recipe <strong>${esc(saved.name)}</strong> — current ${esc(st.name)} price and availability shown.</div></div>` : ''}
+            ${(() => { const w = M.profileWarnings(line); return w.length ? `<div class="note note-warn pnote">${icon('alert')}<div><strong>Check your preferences:</strong> ${esc(w.join(' · '))}. <a href="#/account">Edit profile</a></div></div>` : ''; })()}
             ${issue ? V.fragments.note(esc(issue) + (issue.includes('Pickup only') ? ' Switch to pickup to order it.' : ''), 'err') : ''}
           </header>
           ${builderHtml}
           ${nutritionLabel(p, custom)}
           ${p.builder ? '<p class="tiny muted">Customizing may change dietary suitability. All food is prepared in shared kitchen areas.</p>' : ''}
-          ${g ? `<div class="field"><label for="b-note">Note for ${esc(gp ? gp.name : '')}’s item <span class="opt">optional</span></label><input id="b-note" value="${attr(B.note)}" data-input="b-note" maxlength="80" placeholder="e.g. cut into squares"></div>` : ''}
+          ${g ? `<div class="field"><label for="b-note">Note for ${esc(gp ? gp.name : '')}’s item <span class="optl">optional</span></label><input id="b-note" value="${attr(B.note)}" data-input="b-note" maxlength="80" placeholder="e.g. cut into squares"></div>` : ''}
           <div class="b-foot">
             ${cfgIssues.length ? `<p class="err b-err" role="alert">${icon('alert')}${esc(cfgIssues.join('; '))}</p>` : ''}
             <div class="b-foot-row">
@@ -205,6 +210,7 @@
       case 'b-clear-half': c.halves[B.side] = { sauce: { id: 'no-sauce', amt: 'regular' }, items: [] }; U.announce(`${B.side} half cleared`); break;
       case 'b-qty': B.qty = Math.max(1, Math.min(20, B.qty + Number(el.dataset.d))); break;
       case 'b-reset': B.config = M.defaultConfig(p); B.side = 'left'; U.announce('Reset to the standard recipe'); break;
+      case 's-size': c.size = el.dataset.v; break;
       case 's-greens': c.greens = el.dataset.v; break;
       case 's-dressing': c.dressing = el.dataset.v; break;
       case 's-top': { const id = el.dataset.id; const i = c.toppings.indexOf(id); if (i > -1) c.toppings.splice(i, 1); else c.toppings.push(id); break; }
@@ -358,7 +364,7 @@
       ${sh.mode === 'delivery' ? `<section class="setup-sect" id="setup-address"><h3>Delivery address</h3>
         ${j.addresses.length ? `<div class="addr-opts">${j.addresses.map(a => `<label class="rcard ${a.id === j.selectedAddressId ? 'on' : ''}"><input type="radio" name="addr" ${a.id === j.selectedAddressId ? 'checked' : ''} data-act="setup-addr" data-id="${a.id}"><span><strong>${esc(a.label)}</strong><small>${esc(a.line)}</small>${a.instructions ? `<small class="muted">${esc(a.instructions)}</small>` : ''}</span></label>`).join('')}</div>` : '<p class="small muted">No saved address yet.</p>'}
         ${setupState.addAddr ? `<form class="card subtle" data-form="setup-addr" novalidate><div class="fgrid two"><div class="field"><label for="sa-label">Name</label><input id="sa-label" name="label" placeholder="Home"></div><div class="field"><label for="sa-line">Address</label><input id="sa-line" name="line" autocomplete="street-address" required></div></div>
-          <div class="field"><label for="sa-ins">Instructions <span class="opt">optional</span></label><input id="sa-ins" name="instructions"></div><p class="err" id="sa-err" hidden></p><div class="btn-row"><button class="btn btn-sm btn-primary" type="submit">Save address</button><button class="btn btn-sm btn-ghost" type="button" data-act="setup-addr-toggle">Cancel</button></div></form>`
+          <div class="field"><label for="sa-ins">Instructions <span class="optl">optional</span></label><input id="sa-ins" name="instructions"></div><p class="err" id="sa-err" hidden></p><div class="btn-row"><button class="btn btn-sm btn-primary" type="submit">Save address</button><button class="btn btn-sm btn-ghost" type="button" data-act="setup-addr-toggle">Cancel</button></div></form>`
           : `<div class="btn-row"><button class="btn btn-sm btn-outline" data-act="setup-addr-toggle">${icon('plus')}New address</button><a class="btn btn-sm btn-ghost" href="#/addresses" data-dlg-close>Manage addresses</a></div>`}
         <fieldset class="opt-fs"><legend>Drop-off</legend><div class="method-grid two">${Object.entries(M.CONFIG.dropoffs).map(([k, l]) => `<label class="method ${sh.dropoff === k ? 'on' : ''}"><input type="radio" name="sdrop" ${sh.dropoff === k ? 'checked' : ''} data-act="setup-dropoff" data-v="${k}">${icon(k === 'door' ? 'home' : 'user')}<span><strong>${l}</strong></span></label>`).join('')}</div></fieldset>
       </section>` : `<section class="setup-sect" id="setup-pickup">${V.pickupMethodPicker(store, sh.pickupMethod, locked).replace(/data-act="pickup-method"/g, 'data-act="setup-pickup"')}<div class="pickup-note">${icon('info')}<span>${esc(V.pickupNote(store, sh.pickupMethod))}</span></div></section>`}
