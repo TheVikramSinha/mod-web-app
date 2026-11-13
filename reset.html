@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reset MOD test data</title>
+  <style>
+    :root { --red: #c4122f; --red-dark: #8b0f05; --ink: #231f20; --line: #e9e2dd; --muted: #6c6466; --ok: #1d7a4b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--ink); background: #fbf8f6; }
+    .card { width: min(520px, 100%); background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 28px; box-shadow: 0 20px 50px -25px rgba(35, 31, 32, .35); }
+    .brand { display: inline-block; font-weight: 800; font-size: 20px; background: var(--red); color: #fff; padding: 3px 10px 1px; border-radius: 9px; transform: rotate(-3deg); }
+    h1 { font-size: 26px; margin: 16px 0 6px; }
+    p { color: var(--muted); line-height: 1.5; margin: 0 0 16px; }
+    label.opt { display: flex; gap: 12px; align-items: flex-start; border: 1.5px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 10px; cursor: pointer; }
+    label.opt:has(input:checked) { border-color: var(--red); background: #fdf1f3; }
+    label.opt input { width: 18px; height: 18px; accent-color: var(--red); margin-top: 2px; }
+    label.opt span { display: flex; flex-direction: column; } label.opt small { color: var(--muted); }
+    button { width: 100%; margin-top: 8px; min-height: 50px; border: 0; border-radius: 999px; background: var(--red); color: #fff; font: 700 16px inherit; cursor: pointer; }
+    button:hover { background: var(--red-dark); } button:disabled { opacity: .5; cursor: not-allowed; }
+    button:focus-visible, input:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+    #result { margin-top: 16px; font-weight: 600; min-height: 1.5em; }
+    #result.ok { color: var(--ok); } #result.err { color: var(--red); }
+    .links { display: flex; gap: 16px; margin-top: 14px; font-size: 14px; } .links a { color: var(--red); font-weight: 600; }
+    .tiny { font-size: 12.5px; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <span class="brand">MOD</span>
+    <h1>Reset test data</h1>
+    <p>Clears carts, orders, groups, addresses, rewards activity and settings saved by the prototypes in this browser. The sample member and sample orders come back on next launch.</p>
+    <form id="f">
+      <label class="opt"><input type="checkbox" name="web" checked><span><strong>Website</strong><small id="c-web">…</small></span></label>
+      <label class="opt"><input type="checkbox" name="app" checked><span><strong>Mobile app</strong><small id="c-app">…</small> <small>Includes onboarding — the splash and intro screens show again.</small></span></label>
+      <button type="submit" id="go">Reset selected data</button>
+    </form>
+    <p id="result" role="status" aria-live="polite"></p>
+    <div class="links"><a href="index.html">Open website</a><a href="mobile-app/index.html">Open mobile app</a></div>
+    <p class="tiny" style="margin-top:16px">Open this page the same way you open the prototypes (same server address, or both as local files) — browsers keep data separately for each address.</p>
+  </main>
+  <script>
+    // Storage prefixes used by the prototypes.
+    const GROUPS = { web: ['modproto.v1.', 'modproto.mobile.v1.'], app: ['modapp.v1.'] };
+    const keysFor = (g) => { try { return Object.keys(localStorage).filter(k => GROUPS[g].some(p => k.startsWith(p))); } catch (e) { return null; } };
+    function count() {
+      ['web', 'app'].forEach(g => {
+        const k = keysFor(g); const el = document.getElementById('c-' + g);
+        el.textContent = k === null ? 'Browser storage unavailable' : k.length ? `${k.length} saved item${k.length > 1 ? 's' : ''}` : 'No saved data — already clean';
+      });
+    }
+    count();
+    document.getElementById('f').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const f = e.target; const picked = ['web', 'app'].filter(g => f[g].checked);
+      const out = document.getElementById('result');
+      if (!picked.length) { out.className = 'err'; out.textContent = 'Choose at least one to reset.'; return; }
+      try {
+        let n = 0;
+        picked.forEach(g => keysFor(g).forEach(k => { localStorage.removeItem(k); n++; }));
+        try { sessionStorage.removeItem('modParticipant'); } catch (err) { /* ignore */ }
+        out.className = 'ok';
+        out.textContent = `Done — removed ${n} item${n === 1 ? '' : 's'} (${picked.map(g => g === 'web' ? 'website' : 'mobile app').join(' + ')}). Reload any open prototype tabs.`;
+      } catch (err) { out.className = 'err'; out.textContent = 'Couldn’t reset: browser storage is blocked here.'; }
+      count();
+    });
+  </script>
+</body>
+</html>
