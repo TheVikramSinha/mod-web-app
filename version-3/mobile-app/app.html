@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#17110f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="MOD Pizza">
+  <title>MOD Pizza</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="https://upload.wikimedia.org/wikipedia/en/thumb/2/2b/MOD_Pizza_logo.svg/960px-MOD_Pizza_logo.svg.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/app-native.css">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/modern.css">
+  <link rel="stylesheet" href="css/modern-app.css">
+  <script>
+    // App build: own storage, assets path, native shell. On a wide desktop window outside the preview, open the device preview instead.
+    window.MOD_APP = true; window.MOD_STORAGE_PREFIX = 'modapp.v2.'; window.MOD_ASSETS = 'assets/';
+    (function () { var inFrame = window.top !== window.self; var p = new URLSearchParams(location.search);
+      if (!inFrame && window.innerWidth > 820 && !p.has('standalone') && !/view=participant/.test(location.hash)) location.replace('index.html' + location.hash); })();
+  </script>
+</head>
+<body>
+  <header class="app-header" id="app-header"></header>
+  <main id="main" tabindex="-1"></main>
+  <footer class="app-footer"></footer>
+  <div id="cartbar"></div>
+  <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
+  <div id="dialog-root"></div>
+  <div id="toast-root" aria-hidden="true"></div>
+  <div id="push-root" aria-live="off"></div>
+  <div id="native-root"></div>
+  <div id="live-polite" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  <div id="live-assertive" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
+  <script src="js/data.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/views.js"></script>
+  <script src="js/builder.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/native.js"></script>
+  <script src="vendor/jspdf.umd.min.js" defer></script>
+</body>
+</html>
