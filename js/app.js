@@ -60,10 +60,31 @@
       default: return V.notFound();
     }
   }
-  const TITLES = { menu: 'Menu', item: 'Customize', cart: 'Cart', checkout: 'Checkout', order: 'Order tracking', orders: 'Orders', receipt: 'Receipt', offers: 'Offers', offer: 'Offer', rewards: 'Rewards', activity: 'Activity', wallet: 'Wallet', pass: 'Member pass', account: 'Account', join: 'Join', addresses: 'Addresses', favorites: 'Favorites', groups: 'Group orders', group: 'Group order', support: 'Help' };
+  const TITLES = { home: 'Home', menu: 'Menu', item: 'Customize', cart: 'Cart', checkout: 'Checkout', order: 'Order tracking', orders: 'Orders', receipt: 'Receipt', offers: 'Offers', offer: 'Offer', rewards: 'Rewards', activity: 'Activity', wallet: 'Wallet', pass: 'Member pass', account: 'Account', join: 'Join', addresses: 'Addresses', favorites: 'Favorites', groups: 'Group orders', group: 'Group order', support: 'Help' };
 
   /* ---------------- Chrome ---------------- */
+  const APPMODE = !!window.MOD_APP;
+  const TAB_ROOTS = ['home', 'menu', 'rewards', 'orders', 'account'];
+  function appHeader(r) {
+    const a = r.parts[0] || 'home';
+    const pinfo = participantInfo();
+    const root = (TAB_ROOTS.includes(a) && !st.groupTarget) || (pinfo && a === 'group');
+    const n = M.cartCount(); const { sh } = V.contextSummary();
+    const title = a === 'home' ? '' : (a === 'account' ? 'Account' : TITLES[a] || '');
+    return `<div class="abar ${a === 'home' ? 'is-home' : ''}">
+      <div class="abar-l">${root ? (a === 'home' || pinfo ? `<span class="logo" aria-label="MOD Pizza">${logo()}</span>` : '') : `<button class="abar-back" data-act="nav-back" aria-label="Back">${icon('chevL')}<span class="ios-only">Back</span></button>`}</div>
+      <div class="abar-t" aria-hidden="true">${esc(title)}</div>
+      <div class="abar-r">${pinfo ? '' : `<button class="abar-ico" data-act="journey-menu" aria-label="Demo journey: ${M.isMember() ? 'sample member' : 'guest'}">${icon(M.isMember() ? 'star' : 'user')}</button>
+        <a class="abar-ico cart" href="#/cart" aria-label="Cart, ${n} item${n === 1 ? '' : 's'}">${icon('cart')}${n ? `<span class="badge" aria-hidden="true">${n}</span>` : ''}</a>`}</div></div>`;
+  }
+  function cartBar(r) {
+    const a = r.parts[0] || 'home'; const n = M.cartCount();
+    if (!APPMODE || !n || participantInfo() || ['cart', 'checkout', 'item', 'order'].includes(a)) return '';
+    const q = M.quote();
+    return `<a class="cart-bar" href="#/cart"><span class="cb-n">${n}</span><span class="cb-t">View cart</span><span class="cb-p">${money(q.subtotal - q.discount)}</span></a>`;
+  }
   function header(r) {
+    if (APPMODE) return appHeader(r);
     const pinfo = participantInfo();
     if (pinfo) return `<div class="hdr-inner"><a class="logo" href="#/group/${pinfo.g}?p=${pinfo.p}&view=participant" aria-label="MOD group order">${logo()}</a><span class="pill pill-info">${icon('users')}Group participant window</span></div>`;
     const { sh, store, time } = V.contextSummary();
@@ -84,7 +105,7 @@
     if (participantInfo()) return '';
     const a = r.parts[0] || 'home';
     const t = (href, keys, ic, label) => { const on = keys.includes(a); return `<a href="${href}" class="${on ? 'on' : ''}" ${on ? 'aria-current="page"' : ''}>${icon(ic)}<span>${label}</span></a>`; };
-    return t('#/', ['home'], 'home', 'Home') + t('#/menu', ['menu', 'item'], 'menu', 'Menu') + t('#/rewards', ['rewards', 'wallet', 'pass', 'activity', 'join'], 'star', 'Rewards') + t('#/orders', ['orders', 'order', 'receipt', 'support'], 'receipt', 'Orders') + t('#/account', ['account', 'addresses', 'favorites', 'groups', 'group', 'offers', 'offer'], 'user', 'More');
+    return t('#/', ['home'], 'home', 'Home') + t('#/menu', ['menu', 'item'], 'menu', 'Menu') + t('#/rewards', ['rewards', 'wallet', 'pass', 'activity', 'join'], 'star', 'Rewards') + t('#/orders', ['orders', 'order', 'receipt', 'support'], 'receipt', 'Orders') + t('#/account', ['account', 'addresses', 'favorites', 'groups', 'group', 'offers', 'offer'], 'user', APPMODE ? 'Account' : 'More');
   }
 
   /* ---------------- Render ---------------- */
@@ -105,6 +126,8 @@
     let html; try { html = viewFor(r); } catch (e) { console.error(e); html = V.fragments.pageHead('Something went wrong') + V.fragments.note(esc(e.message), 'err'); }
     main.innerHTML = html;
     tabbar.innerHTML = tabs(r);
+    const cb = document.getElementById('cartbar'); if (cb) cb.innerHTML = cartBar(r);
+    if (APPMODE && changed && changedPath) { main.classList.remove('enter'); void main.offsetWidth; main.classList.add('enter'); }
     document.body.classList.toggle('participant-mode', !!participantInfo());
     document.body.dataset.route = r.parts[0] || 'home';
     document.title = `${TITLES[r.parts[0]] ? TITLES[r.parts[0]] + ' · ' : ''}MOD Pizza`;
@@ -226,6 +249,7 @@
   /* ---------------- Actions ---------------- */
   const ACT = {
     'open-setup': (el) => BLD.openSetup(el.dataset.tab, app),
+    'nav-back': () => { const a = parseHash().parts[0]; if (st.groupTarget) go(`#/group/${st.groupTarget.g}`); else if (history.length > 1 && window.__navCount > 1) history.back(); else go(a === 'item' ? '#/menu' : '#/'); },
     'journey-menu': () => journeyDialog(),
     mode: (el) => { if (M.S.shared.groupCheckout) return U.toast('Fulfillment is locked during group checkout.', 'err'); if (!M.setMode(el.dataset.mode)) U.toast('Not offered at this store', 'err'); else U.announce(`${el.dataset.mode} selected`); },
     journey: (el) => {
@@ -335,7 +359,7 @@
       entry.dlg.querySelector('#gc-yes').addEventListener('click', () => { M.cancelGroup(el.dataset.g); U.closeDialog(entry); U.toast('Group canceled', 'info'); render(); });
     }
   };
-  const NO_RENDER = new Set(['open-setup', 'journey-menu', 'amend-open', 'chat-open', 'pdf', 'print', 'email-copy', 'topup', 'reset-demo', 'g-note', 'g-window', 'g-copy', 'g-cancel']);
+  const NO_RENDER = new Set(['nav-back', 'open-setup', 'journey-menu', 'amend-open', 'chat-open', 'pdf', 'print', 'email-copy', 'topup', 'reset-demo', 'g-note', 'g-window', 'g-copy', 'g-cancel']);
 
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-act]'); if (!el) return;
@@ -477,7 +501,9 @@
     if (BLD.isSetupOpen()) BLD.refreshSetup();
     safeRender();
   });
+  window.__navCount = 1;
   window.addEventListener('hashchange', () => {
+    window.__navCount++;
     const r = parseHash();
     if (r.q.view === 'participant' && r.parts[0] === 'group') setParticipant({ g: r.parts[1], p: r.q.p });
     changedPath = !lastRoute || lastRoute.path !== r.path;
@@ -487,7 +513,7 @@
   window.addEventListener('beforeprint', () => document.body.classList.add('printing'));
   window.addEventListener('afterprint', () => document.body.classList.remove('printing'));
 
-  const app = { render, go };
+  const app = { render, go, parseHash, participantInfo };
   window.APP = app;
   M.S.listeners.add(() => { if (BLD.isSetupOpen()) BLD.refreshSetup(); });
 

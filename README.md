@@ -26,6 +26,8 @@ Serving is recommended for group-order participant windows (same-browser sync us
 | `js/builder.js` | Pizza/salad/kids/cake-pop builders, half-and-half, after-order topping editor, order setup, store-change and chat dialogs |
 | `js/app.js` | Hash router, rendering, actions, forms, timers, cross-window sync, PDF invoice |
 | `vendor/jspdf.umd.min.js` | Local copy of jsPDF for invoice download |
+| `custom.jpg` | Home hero pizza photo |
+| `mobile-app/` | iOS/Android app prototype with device preview — see `mobile-app/README.md` |
 
 ## Demo tips
 

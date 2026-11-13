@@ -117,7 +117,6 @@
     const feat = M.OFFER['o-sweet'];
     const tier = M.tierOf(j), next = M.nextTier(j);
     const toPizza = Math.min(100, Math.round(j.points / M.CONFIG.pizzaRewardCost * 100));
-    const heroPizza = U.pizzaSVG(M.defaultPizzaConfig(M.PROD['p-maddog']), { cls: 'hero-pizza' });
 
     const goCard = (o, label) => `<article class="go-card"><div class="go-art">${U.artFor(M.PROD[o.lines[0].productId] || M.PROD['p-cyo'], o.lines[0].config)}</div>
       <div><span class="eyebrow">${label}</span><h3>${esc(o.lines.map(l => l.name).slice(0, 3).join(' + '))}${o.lines.length > 3 ? '…' : ''}</h3>
@@ -131,7 +130,8 @@
           <p>Pile on what you love, split it down the middle, or grab a go-to in two taps. Every pizza is made on demand.</p>
           <div class="btn-row"><a class="btn btn-lg btn-white" href="#/menu">Start your order ${icon('chevR')}</a><a class="btn btn-lg btn-glass" href="#/item/p-cyo">Build your own</a></div>
         </div>
-        <div class="hero-art" aria-hidden="true">${heroPizza}<div class="hero-badge">${icon('sparkle')}<span>Half & half,<br>no surcharge</span></div></div>
+        <div class="hero-art"><div class="hero-plate"><img src="${window.MOD_ASSETS || ''}custom.jpg" alt="A MOD pizza cut into strips, each strip with different toppings" width="800" height="800" decoding="async"></div>
+          <div class="made-badge" aria-hidden="true"><span>Made</span><strong>Your</strong><span>Way</span></div></div>
       </section>
       ${orderContextCard()}
       ${active.length ? `<section class="active-strip" aria-label="Active orders">${active.slice(0, 2).map(o => { const s = M.stageOf(o); return `<a class="active-card" href="#/order/${o.id}"><span class="pulse" aria-hidden="true"></span><div><strong>${esc(s.label)}</strong><span>${esc(o.id)} · ${o.mode === 'delivery' ? 'Delivery' : 'Pickup'} · ETA ${esc(M.fmtTime(M.etaOf(o), o.tz))}</span></div><span class="active-cta">Track ${icon('chevR')}</span></a>`; }).join('')}</section>` : ''}
@@ -187,7 +187,7 @@
       const ps = list.filter(p => p.cat === c.id); if (!ps.length) return '';
       return `<section class="menu-sect" aria-labelledby="mc-${c.id}"><h2 id="mc-${c.id}">${esc(c.name)} <span class="count">${ps.length}</span></h2><div class="pgrid">${ps.map(productCard).join('')}</div></section>`;
     }).join('');
-    return `${groupBanner()}
+    return `${groupBanner()}${window.MOD_APP && !st.groupTarget ? orderContextCard(true) : ''}
       <div class="menu-top">
         <div class="menu-title">${h1('Menu')}<p class="muted">${esc(M.curStore().name)} · prices for this store</p></div>
         <div class="search"><label for="menu-search" class="sr-only">Search the menu</label>${icon('search')}<input id="menu-search" type="search" placeholder="Search pizzas, toppings, drinks…" value="${attr(st.menu.q)}" data-input="menu-search" autocomplete="off">${st.menu.q ? `<button class="icon-btn sm" data-act="clear-search" aria-label="Clear search">${icon('x')}</button>` : ''}</div>

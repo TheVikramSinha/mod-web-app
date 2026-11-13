@@ -17,7 +17,7 @@
   const digits = (n) => String(Math.floor(Math.random() * Math.pow(10, n))).padStart(n, '0');
 
   /* ---------------- Storage (safe) ---------------- */
-  const PREFIX = (new URLSearchParams(location.search).get('storage') === 'mobile') ? 'modproto.mobile.v1.' : 'modproto.v1.';
+  const PREFIX = window.MOD_STORAGE_PREFIX || ((new URLSearchParams(location.search).get('storage') === 'mobile') ? 'modproto.mobile.v1.' : 'modproto.v1.');
   const memory = {};
   let storageOK = true;
   try { localStorage.setItem(PREFIX + '__t', '1'); localStorage.removeItem(PREFIX + '__t'); } catch (e) { storageOK = false; }

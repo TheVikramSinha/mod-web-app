@@ -1,0 +1,15 @@
+{
+  "name": "MOD Pizza",
+  "short_name": "MOD Pizza",
+  "description": "Order MOD pizza your way — customize, track, and earn rewards.",
+  "start_url": "app.html?standalone=1",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#8b0f05",
+  "theme_color": "#8b0f05",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
