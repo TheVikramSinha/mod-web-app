@@ -114,7 +114,7 @@ html.app .dlg-wrap.in .dlg { transform: none; }
 .perm-ico { width: 52px; height: 52px; border-radius: 16px; background: var(--red-50); color: var(--red); display: grid; place-items: center; margin: 0 auto 12px; }
 .perm-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 html.p-android .perm-card { border-radius: 28px; text-align: left; } html.p-android .perm-ico { margin: 0 0 12px; }
-#push-root { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 0; right: 0; z-index: 280; display: grid; gap: 8px; padding: 0 10px; max-width: 560px; margin: 0 auto; pointer-events: none; }
+#push-root { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 0; right: 0; z-index: 400; display: grid; gap: 8px; padding: 0 10px; max-width: 560px; margin: 0 auto; pointer-events: none; }
 .push { pointer-events: auto; display: flex; gap: 12px; align-items: flex-start; background: rgba(250, 248, 247, .96); backdrop-filter: blur(20px); border-radius: 20px; padding: 12px 14px; box-shadow: 0 16px 40px -14px rgba(35, 31, 32, .45); text-decoration: none; color: var(--ink); transform: translateY(-140%); transition: transform .35s var(--ease); }
 .push.in { transform: none; }
 .push-ico { width: 38px; height: 38px; flex: none; border-radius: 10px; background: var(--red); color: #fff; font: 800 11px var(--display); display: grid; place-items: center; }

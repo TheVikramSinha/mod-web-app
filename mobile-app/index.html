@@ -75,7 +75,8 @@
     function setPlatform(p) {
       platform = p; device.className = 'device ' + p;
       document.getElementById('p-ios').setAttribute('aria-pressed', p === 'ios'); document.getElementById('p-android').setAttribute('aria-pressed', p === 'android');
-      frame.src = `app.html?platform=${p}&nosplash=1` + (frame.contentWindow && frame.contentWindow.location ? frame.contentWindow.location.hash : '');
+      let h = ''; try { h = frame.contentWindow.location.hash; } catch (e) { /* file:// frames can't be read */ }
+      frame.src = `app.html?platform=${p}&nosplash=1` + h;
     }
     document.getElementById('p-ios').onclick = () => setPlatform('ios');
     document.getElementById('p-android').onclick = () => setPlatform('android');
