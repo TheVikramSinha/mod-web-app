@@ -145,12 +145,20 @@
     const p = M.PROD[el.dataset.pid]; const wrap = document.createElement('span'); wrap.className = 'art-fb'; wrap.innerHTML = p ? drawnArt(p) : '';
     el.replaceWith(wrap);
   }
-  function shieldSVG() {
-    return `<svg viewBox="0 0 120 116" class="logo-svg" role="img" aria-label="MOD Pizza"><path d="M60 2 L72 10 L100 5 L112 14 L114 54 C114 84 92 102 60 114 C28 102 6 84 6 54 L8 14 L20 5 L48 10 Z" fill="#a8262b"/><path d="M60 2 L72 10 L100 5 L112 14 L114 54 C114 84 92 102 60 114 Z" fill="#7d2228"/><text x="60" y="70" text-anchor="middle" font-family="Arial Narrow, Arial, sans-serif" font-weight="700" font-size="40" fill="#fff" letter-spacing="-1">MOD</text></svg>`;
+  // MOD shield (2026 brand): single colour, lettering shows the background, ™ in the shield colour at the
+  // bottom-right of MOD. variant 'primary' = Brick Oven Burgundy (bright/neutral backgrounds); 'reversed' = white (dark backgrounds).
+  // Prototype rendition — replace with the official files from the brand portal (Downloads → Primary Logos) for production.
+  let shieldN = 0;
+  function shieldSVG(variant = 'primary', cls = '') {
+    const c = variant === 'reversed' ? '#ffffff' : '#a61932'; const id = 'mods' + (++shieldN);
+    return `<svg viewBox="0 0 132 128" class="logo-svg ${variant === 'reversed' ? 'rev' : ''} ${cls}" role="img" aria-label="MOD Pizza">
+      <mask id="${id}" maskUnits="userSpaceOnUse"><rect width="132" height="128" fill="#fff"/>
+        <text x="62" y="66" text-anchor="middle" font-family="Oswald, 'Arial Narrow', 'DejaVu Sans Condensed', sans-serif" font-weight="700" font-size="44" letter-spacing="-.5" fill="#000">MOD</text>
+        <text x="62" y="92" text-anchor="middle" font-family="Oswald, 'Arial Narrow', 'DejaVu Sans Condensed', sans-serif" font-weight="600" font-size="21" letter-spacing="2" fill="#000">PIZZA</text></mask>
+      <path mask="url(#${id})" fill="${c}" d="M62 3 C80 3 98 7 116 13 L116 62 C116 92 94 112 62 124 C30 112 8 92 8 62 L8 13 C26 7 44 3 62 3 Z"/>
+      <text x="112" y="122" font-family="Barlow, Arial, sans-serif" font-weight="700" font-size="11" fill="${c}">™</text></svg>`;
   }
-  function logoImg(cls = '') {
-    return `<img class="logo-img ${cls}" src="${attr(M.CONFIG.logoUrl)}" alt="MOD Pizza" width="44" height="42" referrerpolicy="no-referrer" onerror="this.outerHTML=UI.shieldSVG()">`;
-  }
+  function logoImg(cls = '', variant = 'primary') { return shieldSVG(variant, 'logo-img ' + cls); }
   function drawnArt(p, cfg) {
     if (p.cat === 'pizzas') return pizzaSVG(cfg || M.defaultConfig(p));
     if (p.cat === 'salads') {

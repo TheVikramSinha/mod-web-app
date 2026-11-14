@@ -135,3 +135,9 @@ html.app #toast-root { width: calc(100% - 24px); }
 /* Login: distraction-free (no back, profile, cart or tab bar) */
 html.app body[data-route="login"] main { padding: 0 0 calc(24px + var(--sab, 0px)); min-height: calc(100vh - var(--hdr)); }
 html.app body[data-route="login"] .app-header { background: var(--crust); }
+
+/* Brand: splash uses the reversed shield on burgundy (no white box); onboarding cards use the brighter palette */
+.n-splash { background: var(--red); background-image: var(--wave), linear-gradient(160deg, var(--red), var(--red-dark)); background-size: 120px 40px, auto; background-blend-mode: soft-light, normal; }
+.sp-mark { background: none !important; padding: 0 !important; box-shadow: none !important; } .sp-mark .logo-svg { width: 112px; }
+.ob-card.dark { background: linear-gradient(140deg, var(--red), var(--red-dark)); }
+.abar .logo-svg { width: 38px; }

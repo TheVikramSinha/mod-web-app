@@ -35,7 +35,7 @@
   function splash() {
     return new Promise((res) => {
       if (participant || params.get('nosplash')) return res();
-      const el = overlay('n-splash', `<div class="sp-mark" aria-hidden="true">${U.logoImg('sp-logo')}</div><div class="sp-dots" aria-hidden="true"><span></span><span></span><span></span></div><p class="sr-only" role="status">Loading MOD Pizza</p>`);
+      const el = overlay('n-splash', `<div class="sp-mark" aria-hidden="true">${U.logoImg('sp-logo', 'reversed')}</div><div class="sp-dots" aria-hidden="true"><span></span><span></span><span></span></div><p class="sr-only" role="status">Loading MOD Pizza</p>`);
       setTimeout(() => { closeOverlay(el); res(); }, U.reduceMotion() ? 300 : 1400);
     });
   }
@@ -58,7 +58,7 @@
       trapFocus(el);
       const draw = () => {
         const s = SLIDES[i]; const last = i === SLIDES.length - 1;
-        el.innerHTML = `<div class="ob-top"><span class="logo">${U.logoImg()}<span class="logo-text">MOD Pizza</span></span>${!last ? '<button class="ob-skip" data-ob="skip">Skip</button>' : ''}</div>
+        el.innerHTML = `<div class="ob-top"><span class="logo">${U.logoImg()}</span>${!last ? '<button class="ob-skip" data-ob="skip">Skip</button>' : ''}</div>
           <div class="ob-art">${slideArt(s.art)}</div>
           <div class="ob-copy"><h2 id="ob-h" tabindex="-1">${esc(s.t)}</h2><p>${esc(s.d)}</p></div>
           <div class="ob-dots" aria-label="Step ${i + 1} of ${SLIDES.length}">${SLIDES.map((_, k) => `<span class="${k === i ? 'on' : ''}"></span>`).join('')}</div>

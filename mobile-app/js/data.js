@@ -19,7 +19,6 @@
       { id: 'mod', name: 'MOD', sub: 'Entrée', adj: 0 },
       { id: 'mega', name: 'MEGA', sub: 'Family size', adj: 600 }
     ],
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2b/MOD_Pizza_logo.svg/960px-MOD_Pizza_logo.svg.png',
     sizes: [
       { id: 'small', name: 'Mini', inch: '6"', adj: -300 },
       { id: 'regular', name: 'MOD', inch: '11"', adj: 0 },

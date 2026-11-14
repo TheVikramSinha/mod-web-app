@@ -103,7 +103,7 @@
         <a class="cart-btn" href="#/cart" aria-label="Cart, ${n} item${n === 1 ? '' : 's'}">${icon('cart')}<span class="badge ${n ? '' : 'zero'}" aria-hidden="true">${n}</span></a>
       </div></div>`;
   }
-  const logo = () => `${U.logoImg()}<span class="logo-text">MOD Pizza</span>`;
+  const logo = () => U.logoImg();
   function tabs(r) {
     if (participantInfo()) return '';
     const a = r.parts[0] || 'home';

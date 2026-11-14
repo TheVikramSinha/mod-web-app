@@ -976,3 +976,85 @@ body[data-route="login"] main { padding-top: 8px; }
   .auth-card { margin: -28px 12px 0; border-radius: 24px; padding: 28px 22px 24px; box-shadow: var(--shadow); }
   .auth-card h1 { font-size: 34px; }
 }
+
+/* ---------------- Brand layer 2 (MOD 2026 Brand Architecture) ----------------
+   Logo: single-colour shield, no typed name beside it; reversed (white) on dark/burgundy grounds; ™ always present.
+   Colour: brighter palette — burgundy replaces legacy dark/ink surfaces; Roma Red only alongside burgundy;
+   Crust as supporting background; Sky Blue / Ice Cold Aqua / Olive Oil Green as accents only (non-pizza items, info states).
+   Identity: burgundy + crust wave pattern on hero brand moments. */
+:root {
+  --info: #1d6b7a; --info-bg: #e3f4f7; --ok: #3f5600; --ok-bg: #f1f6c8; --veg: #5d7a00; --vegan: #4a6200;
+  --gold: #a61932;
+  --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40' viewBox='0 0 120 40'%3E%3Cpath d='M0 20 C20 0 40 0 60 20 S100 40 120 20' fill='none' stroke='%23f3e8d7' stroke-width='9' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+/* logo */
+.logo-svg { width: 44px; height: auto; display: block; flex: none; overflow: visible; }
+.logo .logo-svg { width: 46px; }
+.abar .logo-svg { width: 38px; }
+.hdr-auth .logo-svg, .abar-auth .logo-svg { width: 52px; }
+.pass-logo .logo-svg { width: 46px; background: none; padding: 0; border-radius: 0; }
+.inv-logo .logo-svg { width: 60px; }
+/* brighter palette: burgundy for selected/active states instead of legacy black */
+.journey-chip.member, .tab.on, .chip.tog.on, .day-tab.on, .half-tab.on { background: var(--red); border-color: var(--red); color: #fff; }
+.journey-chip.member .ico { color: var(--crust); }
+.cart-btn .badge, .pcard-tag { background: var(--roma); }
+.cart-btn { box-shadow: 0 6px 16px -6px rgba(166, 25, 50, .7); }
+.active-card, .group-banner { background: var(--red-dark); }
+.sim-msg strong { color: var(--crust); }
+.tier.on { border-color: var(--red); background: var(--crust); }
+.t-earn, .t-bonus { background: var(--crust); color: var(--red); }
+.pickup-note, .participant-bar, .near-label { color: var(--info); }
+/* secondary accents for non-pizza products */
+.cat-tile[href*="cat=salads"] .cat-art { background: #f4f8d6; }
+.cat-tile[href*="cat=desserts"] .cat-art, .cat-tile[href*="cat=beverages"] .cat-art { background: var(--aqua); }
+/* login art panel: brand wave pattern */
+.auth, .auth-art { background-image: var(--wave), linear-gradient(155deg, var(--red) 0%, var(--red-dark) 80%); background-size: 120px 40px, auto; background-blend-mode: soft-light, normal; }
+@media (max-width: 860px) { .auth { background: none; } }
+/* caps buttons are wider — let hero CTAs wrap on small screens */
+.hero-copy { min-width: 0; } .hero .btn-row { flex-wrap: wrap; }
+@media (max-width: 480px) { .btn-lg { padding-left: 18px; padding-right: 18px; letter-spacing: .03em; } }
+
+
+/* ================= UI fixes · round 3 ================= */
+/* 1. Cards — one consistent system. Rewards-family cards all follow the reference rewards card. */
+.card { border-radius: var(--radius); border: 1px solid var(--line); box-shadow: var(--shadow-sm); padding: 20px; }
+.rewards-card, .points-hero, .prof-hero, .pass {
+  background: linear-gradient(140deg, var(--ink) 0%, #3a2a2c 60%, var(--red-dark) 140%);
+  color: #fff; border-radius: var(--radius-lg); position: relative; overflow: hidden; isolation: isolate; box-shadow: var(--shadow); }
+.rewards-card { padding: 24px; }
+.points-hero, .prof-hero { padding: 28px; }
+.pass { padding: 26px; box-shadow: var(--shadow-lg); }
+.points-hero::after, .pass::after, .prof-hero::before { content: ''; position: absolute; right: -60px; top: -60px; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, rgba(166, 25, 50, .55), transparent 70%); z-index: -1; pointer-events: none; }
+.pass::before, .prof-hero::after { display: none; }
+.rewards-card .meter span, .meter.light span { background: linear-gradient(90deg, #ffd166, #fff); }
+.journey-chip.member .ico { color: #ffd166; }
+html.app .ob-card.dark { background: linear-gradient(140deg, var(--ink) 0%, #3a2a2c 60%, var(--red-dark) 140%); }
+
+/* 2. Menu section headings — underline bar sits clear of the text, readable colours */
+.menu-sect > h2 { display: inline-block; position: relative; padding-bottom: 12px; margin-bottom: 18px; box-shadow: none; }
+.menu-sect > h2::after { content: ''; position: absolute; left: 0; bottom: 0; width: 44px; height: 4px; border-radius: 2px; background: var(--red); }
+#mc-salads::after { background: #8fa300; }
+#mc-desserts::after { background: #3fa9bd; }
+#mc-beverages::after { background: #3fa9bd; }
+#mc-pizzas::after, #mc-sides::after, #mc-kids::after, #mc-extras::after { background: var(--red); }
+
+/* 3. Category icon tiles / menu tabs — room for the hover lift so nothing clips at the top */
+.cat-row { padding-top: 8px; margin-top: -8px; padding-bottom: 10px; }
+.tabs { padding: 6px 2px; margin-top: -4px; }
+html.app .cat-row { padding-top: 8px; margin-top: -8px; }
+
+/* 4. Topping list — an expanded (selected) topping no longer stretches its neighbours */
+.ing-list { align-items: start; }
+
+/* 5. Toast action link — high contrast on the dark toast */
+.toast-act, .toast a { color: #ffd166; text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
+.toast-act:hover, .toast a:hover { color: #fff; }
+
+/* 6. Selected items keep their selected look on hover */
+.hdr-nav a.on:hover { background: var(--red-50); color: var(--red); }
+a.tab.on:hover, .tab.on:hover, .chip.tog.on:hover, .day-tab.on:hover, .half-tab.on:hover, .journey-chip.member:hover { background: var(--red); border-color: var(--red); color: #fff; }
+.slot.on:hover { background: var(--red); border-color: var(--red); color: #fff; }
+.opt.on:hover, .method.on:hover { border-color: var(--red); }
+.seg-btn.on:hover { color: var(--ink); }
+.tabbar a.on:hover { color: var(--red); }
+.cat-tile[aria-current]:hover, .pcard.on:hover { transform: none; }

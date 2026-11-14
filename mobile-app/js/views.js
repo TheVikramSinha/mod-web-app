@@ -510,7 +510,7 @@
     return `${pageHead('Receipt', '', `#/order/${o.id}`)}
       <div class="btn-row no-print receipt-actions"><button class="btn btn-primary" data-act="pdf" data-id="${o.id}">${icon('download')}Download PDF</button><button class="btn btn-outline" data-act="print">${icon('print')}Print</button><button class="btn btn-outline" data-act="email-copy" data-id="${o.id}">${icon('mail')}Email a copy</button></div>
       <article class="invoice card" id="invoice">
-        <header class="inv-head"><div class="inv-logo">${U.logoImg()}<span>MOD Pizza</span></div><div class="inv-meta"><h2>Invoice</h2>
+        <header class="inv-head"><div class="inv-logo">${U.logoImg()}</div><div class="inv-meta"><h2>Invoice</h2>
           <dl><dt>Invoice</dt><dd>${esc(o.invoice.id)}</dd><dt>Revision</dt><dd>${o.invoice.revision}</dd><dt>Order</dt><dd>${esc(o.id)}</dd><dt>Date</dt><dd>${esc(M.fmtDate(o.createdAt, o.tz))} ${esc(M.fmtTime(o.createdAt, o.tz))}</dd><dt>Status</dt><dd>${esc(s.label)}</dd></dl></div></header>
         <div class="inv-parties"><div><h3>Billed to</h3><p>${esc(o.contact.name)}<br>${esc(o.contact.email)}<br>${esc(o.contact.phone)}${o.address ? `<br>${esc(o.address)}` : ''}</p></div>
           <div><h3>Store</h3><p>MOD ${esc(o.storeName)}<br>${esc(o.storeAddress)}<br>${esc(methodOf(o))}${o.vehicle ? ` · ${esc(o.vehicle)}` : ''}${o.schedule.type === 'later' ? ` · scheduled ${esc(M.fmtTime(o.schedule.slot, o.tz, { date: true }))}` : ''}</p></div></div>
@@ -666,7 +666,7 @@
     if (!M.isMember()) return memberGate('Member pass');
     const j = M.J(); const tier = M.tierOf(j);
     return `${pageHead('Member pass', 'Show this at the counter to earn on in-store orders.', '#/rewards')}
-      <div class="pass-wrap"><article class="pass"><div class="pass-top"><div class="pass-logo">${U.logoImg()}<span>Rewards</span></div>${pill(esc(tier.name), 'pill-gold')}</div>
+      <div class="pass-wrap"><article class="pass"><div class="pass-top"><div class="pass-logo">${U.logoImg('', 'reversed')}<span>Rewards</span></div>${pill(esc(tier.name), 'pill-gold')}</div>
         <div class="pass-name">${esc(j.profile.name || 'Member')}</div><div class="pass-pts"><strong>${j.points.toLocaleString()}</strong> pts available</div>
         <div class="pass-code">${U.barcodeSVG(j.memberId)}<span>${esc(j.memberId)}</span></div>
         <p class="pass-foot">${j.enrolled ? 'Enrolled member' : 'Sample rewards profile'} · Sample barcode for demonstration — not scannable.</p></article>
