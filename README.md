@@ -18,7 +18,7 @@ Serving is recommended for group-order participant windows (same-browser sync us
 | File | Purpose |
 |---|---|
 | `index.html` | App shell, live regions, script order |
-| `css/styles.css` | Design system (brand red `#c4122f`, dark red `#8b0f05`, ink `#231f20`, white) and layouts |
+| `css/styles.css` | Design system (brand red `#a61932`, dark red `#7d1226`, ink `#231f20`, white) and layouts |
 | `js/data.js` | Configurable sample stores, menu, ingredients, offers, rewards, pricing rules |
 | `js/core.js` | State, storage, scheduling, pricing (integer cents), offers, rewards, points, orders, groups, refunds |
 | `js/ui.js` | Icons, pizza/food illustrations, dialogs (focus-managed), toasts, announcements |

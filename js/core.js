@@ -2,10 +2,10 @@
    No backend: everything is simulated in browser-local storage. Money is integer cents. */
 (function () {
   'use strict';
-  const { CONFIG, STORES, INGREDIENTS, PRODUCTS, OFFERS, REWARDS, KIDS_DRINKS, CAKEPOP_FLAVORS, SAMPLE_RECEIPTS } = window.MOD_DATA;
+  const { CONFIG, STORES, INGREDIENTS, PRODUCTS, BUILDER_PRODUCTS, OFFERS, REWARDS, KIDS_DRINKS, CAKEPOP_FLAVORS, SAMPLE_RECEIPTS } = window.MOD_DATA;
 
   const ING = Object.fromEntries(INGREDIENTS.map(i => [i.id, i]));
-  const PROD = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
+  const PROD = Object.fromEntries(PRODUCTS.concat(BUILDER_PRODUCTS || []).map(p => [p.id, p]));
   const STORE = Object.fromEntries(STORES.map(s => [s.id, s]));
   const OFFER = Object.fromEntries(OFFERS.map(o => [o.id, o]));
   const REWARD = Object.fromEntries(REWARDS.map(r => [r.id, r]));
@@ -526,7 +526,7 @@
     const next = st[idx + 1];
     return { id, idx, done: idx === st.length - 1, label: STAGE_LABEL[id], steps: st, start, nextAt: next ? start + next[1] * 1000 : null, progress: Math.min(1, el / st[st.length - 1][1]) };
   }
-  const canAmend = (o) => { const s = stageOf(o); return !o.canceled && (s.id === 'scheduled' || s.id === 'received' || s.id === 'accepted'); };
+  const canAmend = (o) => { const s = stageOf(o); return !o.canceled && (s.id === 'scheduled' || s.id === 'received'); }; // editable until the store accepts the order
   function etaOf(o) {
     if (o.schedule && o.schedule.type === 'later' && o.schedule.slot) return o.schedule.slot;
     return orderStart(o) + CONFIG.stages[o.mode].slice(-1)[0][1] * 1000;
@@ -587,8 +587,17 @@
       payment: { method: sh.journey === 'member' ? sh.pay.method : (sh.pay.method === 'wallet' ? 'card' : sh.pay.method), credit: q.credit, gift: q.gift, other: sh.journey === 'member' ? q.other : q.total },
       earnRule: q.points.rule, pointsEstimate: q.points.points, pointsAwarded: false, pointsEarned: 0,
       invoice: { id: 'INV-' + digits(7), revision: 1 }, amendments: [], support: [], chat: [], feedback: null, refund: null, canceled: false,
-      group: null
+      group: null,
+      loyalty: null
     };
+    // Auto-enrol in MOD Rewards unless the customer opted out at checkout.
+    const dr = sh.draft || {};
+    if (!j.enrolled) {
+      order.loyalty = { enrolled: !dr.loyaltyOptOut, offers: !dr.offersOptOut, texts: !dr.textsOptOut, joined: true };
+      j.profile.marketing = !dr.offersOptOut; j.profile.smsOffers = !dr.textsOptOut;
+      if (!dr.loyaltyOptOut) { j.enrolled = true; j.enrolledAt = now; if (!j.memberId) j.memberId = 'MR' + digits(8); }
+    } else if (sh.journey === 'guest') order.loyalty = { enrolled: true, offers: !!j.profile.marketing, texts: j.profile.smsOffers !== false, joined: false };
+    if (sh.journey === 'guest' && order.loyalty && order.loyalty.enrolled) order.pointsEstimate = Math.floor(Math.floor(q.foodAfter / 100) * CONFIG.pointsPerDollar);
     if (sh.groupCheckout) {
       const g = S.groups.find(x => x.id === sh.groupCheckout);
       if (g) { order.group = { id: g.id, name: g.name, participants: g.participants.map(p => p.name) }; g.status = 'placed'; g.orderId = order.id; g.placedAt = now; }
@@ -637,7 +646,7 @@
   function amendOrder(orderId, lineUid, newConfig) {
     const f = findOrder(orderId); if (!f) return { ok: false, reason: 'Order not found' };
     const o = f.order;
-    if (!canAmend(o)) return { ok: false, reason: 'Preparation has started — this order can no longer be changed.' };
+    if (!canAmend(o)) return { ok: false, reason: 'The store has accepted this order — it can no longer be changed.' };
     const l = o.lines.find(x => x.uid === lineUid); if (!l) return { ok: false, reason: 'Pizza not found' };
     const p = PROD[l.productId]; const store = STORE[o.storeId];
     const cfg = Object.assign(clone(l.config), { size: l.config.size, crust: l.config.crust });
@@ -673,7 +682,7 @@
     const f = findOrder(id); if (!f) return { ok: false, reason: 'Order not found' };
     const o = f.order;
     if (o.canceled) return { ok: false, reason: 'This order is already canceled.' };
-    if (!canAmend(o)) return { ok: false, reason: 'We’ve started preparing this order, so it can’t be canceled here. Contact support for help.' };
+    if (!canAmend(o)) return { ok: false, reason: 'The store has accepted this order, so it can’t be canceled here. Contact support for help.' };
     o.canceled = true; o.canceledAt = Date.now(); o.cancelReason = reason || 'Canceled by customer';
     o.refund = { status: 'approved', self: true, requestedAt: Date.now(), resolvedAt: Date.now(), amount: o.payment.other };
     if (f.journey === 'member') restoreTenders(o, f.j);
@@ -716,7 +725,7 @@
           o.pointsAwarded = true; o.pointsEarned = o.pointsEstimate || 0; o.completedAt = now;
           if (o.pointsEarned) { j.points += o.pointsEarned; j.lifetime += o.pointsEarned; activity(j, { type: 'earn', text: `Earned on ${o.id}`, points: o.pointsEarned, orderId: o.id }); }
           changed = true;
-        } else if (k === 'guest' && s.done && !o.pointsAwarded && !o.canceled) { o.pointsAwarded = true; o.completedAt = now; changed = true; }
+        } else if (k === 'guest' && s.done && !o.pointsAwarded && !o.canceled) { o.pointsAwarded = true; o.completedAt = now; if (o.loyalty && o.loyalty.enrolled && o.pointsEstimate) { o.pointsEarned = o.pointsEstimate; j.points += o.pointsEarned; j.lifetime += o.pointsEarned; activity(j, { type: 'earn', text: `Earned on ${o.id}`, points: o.pointsEarned, orderId: o.id }); } changed = true; }
         if (o.refund && o.refund.status === 'review' && now - o.refund.requestedAt > CONFIG.refundReviewSec * 1000) {
           reconcileRefund({ order: o, journey: k, j }); changed = true;
         }

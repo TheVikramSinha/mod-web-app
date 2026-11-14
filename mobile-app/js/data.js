@@ -57,7 +57,7 @@
     ],
     pickupMethods: { instore: 'In-store pickup', curbside: 'Curbside pickup', drivethru: 'Drive-thru' },
     dropoffs: { door: 'Leave at door', hand: 'Hand it to me' },
-    popularDefault: ['p-ogpep', 'p-cyo', 'p-carnivore', 'p-firebird', 'x-nonamecake', 's-italian', 'd-garlic', 'b-lemonade'],
+    popularDefault: ['p-ogpep', 'p-one', 'p-carnivore', 'p-firebird', 'x-nonamecake', 's-italian', 'd-garlic', 'b-lemonade'],
     profileBonus: 100,
     challenge: { id: 'explore3', name: 'Pizza Explorer', need: 3, points: 250 }
   };
@@ -65,10 +65,10 @@
   const STORES = [
     { id: 's1', lat: 47.6151, lng: -122.3270, name: 'Capitol Hill', city: 'Seattle, WA', address: '1302 Pine St, Seattle, WA 98101', tz: 'America/Los_Angeles',
       open: 540, close: 1440, modes: ['pickup', 'delivery'], deliveryFee: 399, prepMin: 15, priceFactor: 1, accepting: true,
-      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'curbside', 'drivethru'], popular: ['p-ogpep', 'p-cyo', 'p-firebird', 'p-pesto', 'x-nonamecake', 'b-lemonade'], pickupNote: 'Pickup shelf is left of the ordering counter. Show your order name or number.' },
+      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'curbside', 'drivethru'], popular: ['p-ogpep', 'p-maddy', 'p-firebird', 'p-pesto', 'x-nonamecake', 'b-lemonade'], pickupNote: 'Pickup shelf is left of the ordering counter. Show your order name or number.' },
     { id: 's2', lat: 47.6157, lng: -122.2036, name: 'Bellevue Square', city: 'Bellevue, WA', address: '575 Bellevue Sq, Bellevue, WA 98004', tz: 'America/Los_Angeles',
       open: 600, close: 1320, modes: ['pickup', 'delivery'], deliveryFee: 299, prepMin: 20, priceFactor: 1, accepting: true,
-      outProducts: ['p-pesto'], outIngredients: ['artichoke'], pickupMethods: ['instore', 'curbside'], popular: ['p-maddy', 'p-vegout', 'p-cyo', 's-caesar', 'x-cinnamod', 'b-tea'], pickupNote: 'Mall level 2 food hall. Use the MOD pickup counter by the register.' },
+      outProducts: ['p-pesto'], outIngredients: ['artichoke'], pickupMethods: ['instore', 'curbside'], popular: ['p-maddy', 'p-vegout', 'p-ogpep', 's-caesar', 'x-cinnamod', 'b-tea'], pickupNote: 'Mall level 2 food hall. Use the MOD pickup counter by the register.' },
     { id: 's3', lat: 39.7527, lng: -105.0002, name: 'LoDo', city: 'Denver, CO', address: '1600 Wynkoop St, Denver, CO 80202', tz: 'America/Denver',
       open: 630, close: 1410, modes: ['pickup', 'delivery'], deliveryFee: 349, prepMin: 15, priceFactor: 1.05, accepting: true,
       outProducts: [], outIngredients: [], pickupMethods: ['instore', 'drivethru'], popular: ['p-carnivore', 'p-smoke', 'p-modgherita', 'd-garlic', 'x-cinnamod', 'b-fountain'], pickupNote: 'Walk in and grab your order from the heated pickup rack.' },
@@ -77,10 +77,10 @@
       outProducts: ['s-med'], outIngredients: ['bacon'], pickupMethods: ['instore'], popular: ['p-legend', 'p-carnivore', 'p-ogpep', 'd-strips', 'x-nonamecake', 'b-lemonade'], pickupNote: 'Pickup counter is at the end of the make line.' },
     { id: 's5', lat: 30.2496, lng: -97.7497, name: 'South Congress', city: 'Austin, TX', address: '1500 S Congress Ave, Austin, TX 78704', tz: 'America/Chicago',
       open: 600, close: 1320, modes: ['pickup'], deliveryFee: null, prepMin: 15, priceFactor: 0.98, accepting: true,
-      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'curbside', 'drivethru'], popular: ['p-vegout', 'p-cyo', 'p-aloha', 's-garden', 'x-nonamecake', 'b-tea'], pickupNote: 'Pickup only at this location. Shelf by the front window.' },
+      outProducts: [], outIngredients: [], pickupMethods: ['instore', 'curbside', 'drivethru'], popular: ['p-vegout', 'p-ogpep', 'p-aloha', 's-garden', 'x-nonamecake', 'b-tea'], pickupNote: 'Pickup only at this location. Shelf by the front window.' },
     { id: 's6', lat: 40.7356, lng: -73.9925, name: 'Union Square', city: 'New York, NY', address: '30 E 14th St, New York, NY 10003', tz: 'America/New_York',
       open: 660, close: 1380, modes: ['pickup', 'delivery'], deliveryFee: 499, prepMin: 20, priceFactor: 1.12, accepting: false,
-      pausedReason: 'Online ordering is paused at this store right now.', outProducts: [], outIngredients: [], pickupMethods: ['instore'], popular: ['p-ogpep', 'p-cyo', 'p-maddy', 'd-garlic', 'x-nonamecake', 'b-water'], pickupNote: 'Pickup at the front counter.' }
+      pausedReason: 'Online ordering is paused at this store right now.', outProducts: [], outIngredients: [], pickupMethods: ['instore'], popular: ['p-ogpep', 'p-firebird', 'p-maddy', 'd-garlic', 'x-nonamecake', 'b-water'], pickupNote: 'Pickup at the front counter.' }
   ];
 
   // type: sauce | cheese | meat | veggie | finish | salad | dressing | greens  (names follow MOD's published menu)
@@ -187,10 +187,14 @@
   const n = (cal, fat, carbs, protein, sodium) => ({ cal, fat, carbs, protein, sodium });
   const pz = (sauce, items) => ({ sauce, items }); // items: ingredient ids at Regular / Whole
 
+  // Build Your Pizza: the builder base behind “Build your own” links. Kept off the menu list (the menu only renders PRODUCTS).
+  const BUILDER_PRODUCTS = [
+    Object.assign({ id: 'p-cyo', cat: 'pizzas', name: 'Build Your Pizza', desc: 'Build your own with 40+ toppings and 8 finishing sauces — all for one price. Supports independent half-and-half recipes.',
+      price: 1199, diet: 'veg', builder: 'pizza', custom: true, splitAllowed: true, recipe: pz('tomato-sauce', ['mozzarella']), nutrition: n(680, 24, 88, 29, 1420), calText: 'Custom', tag: 'Build your own' }, img('2021/12/260518_olo_image_square_01-23.jpg'))
+  ];
+
   const PRODUCTS = [
     // Pizzas — signatures from modpizza.com/menu; prices are sample values
-    Object.assign({ id: 'p-cyo', cat: 'pizzas', name: 'The MOD', desc: 'Build your own with 40+ toppings and 8 finishing sauces — all for one price. Supports independent half-and-half recipes.',
-      price: 1199, diet: 'veg', builder: 'pizza', custom: true, splitAllowed: true, recipe: pz('tomato-sauce', ['mozzarella']), nutrition: n(680, 24, 88, 29, 1420), calText: 'Custom', tag: 'Build your own' }, img('2021/12/260518_olo_image_square_01-23.jpg')),
     Object.assign({ id: 'p-one', cat: 'pizzas', name: 'One Topping', desc: 'Everyday value: sauce, cheese and your one favourite topping. Cheese choices don’t count toward the limit.',
       price: 899, diet: 'nonveg', builder: 'pizza', toppingLimit: 1, recipe: pz('tomato-sauce', ['mozzarella', 'pepperoni']), nutrition: n(860, 36, 89, 37, 1980), tag: 'Value' }, img('2026/07/260518_olo_image_square_01_tan-08.jpg')),
     Object.assign({ id: 'p-maddy', cat: 'pizzas', name: 'Maddy’s Favorite', desc: 'Tomato sauce, mozzarella and asiago. Simple, cheesy, perfect.',
@@ -327,5 +331,5 @@
     '4': [39.77, -86.16, 'Great Lakes'], '5': [44.98, -93.27, 'Upper Midwest'], '6': [41.88, -87.63, 'Midwest'], '7': [32.78, -96.80, 'South Central'], '8': [39.74, -104.99, 'Mountain West'], '9': [47.61, -122.33, 'West Coast'] };
   const SIM_GPS = { lat: 47.6142, lng: -122.3196, label: 'Current location (simulated: Capitol Hill, Seattle)' };
 
-  window.MOD_DATA = { CONFIG, STORES, INGREDIENTS, PRODUCTS, CATEGORIES, OFFERS, REWARDS, SALAD_TOPPINGS, PIZZA_TOPPINGS, FINISHES, CHEESES, SAUCES, KIDS_DRINKS, CAKEPOP_FLAVORS, SAMPLE_RECEIPTS, ZIPS, ZIP_PREFIX, ZIP_REGION, SIM_GPS };
+  window.MOD_DATA = { CONFIG, STORES, INGREDIENTS, PRODUCTS, BUILDER_PRODUCTS, CATEGORIES, OFFERS, REWARDS, SALAD_TOPPINGS, PIZZA_TOPPINGS, FINISHES, CHEESES, SAUCES, KIDS_DRINKS, CAKEPOP_FLAVORS, SAMPLE_RECEIPTS, ZIPS, ZIP_PREFIX, ZIP_REGION, SIM_GPS };
 })();

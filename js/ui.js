@@ -158,12 +158,12 @@
       return bowlSVG(tops.length ? tops : null);
     }
     if (p.cat === 'kids') return `<svg viewBox="0 0 200 200" aria-hidden="true"><g transform="translate(14 30) scale(.62)">${pizzaSVG({ size: 'regular', crust: 'original', split: false, whole: { sauce: { id: 'tomato-sauce', amt: 'regular' }, items: [{ id: 'mozzarella', amt: 'regular' }].concat(cfg && cfg.topping && cfg.topping !== 'cheese' ? [{ id: cfg.topping, amt: 'regular' }] : []) } }).replace('<svg', '<svg width="200" height="200"')}</g>
-      <rect x="138" y="70" width="40" height="80" rx="8" fill="#f6c94c"/><rect x="138" y="70" width="40" height="18" rx="6" fill="#c4122f"/><rect x="152" y="50" width="4" height="26" fill="#231f20"/></svg>`;
+      <rect x="138" y="70" width="40" height="80" rx="8" fill="#f6c94c"/><rect x="138" y="70" width="40" height="18" rx="6" fill="#a61932"/><rect x="152" y="50" width="4" height="26" fill="#231f20"/></svg>`;
     if (p.cat === 'beverages') {
       const col = { 'b-lemonade': '#f7e27a', 'b-tea': '#a8642a', 'b-fountain': '#3b1d14', 'b-water': '#cfe8f5', 'b-beer': '#e8b43a', 'b-wine': '#7a1730' }[p.id] || '#f7e27a';
       if (p.id === 'b-wine') return `<svg viewBox="0 0 200 200" aria-hidden="true"><ellipse cx="100" cy="178" rx="40" ry="7" fill="rgba(35,31,32,.1)"/><path d="M70 40h60c0 45-12 70-30 70S70 85 70 40z" fill="#f3eeee" stroke="#d8cfcf" stroke-width="3"/><path d="M73 62h54c-3 28-12 44-27 44S76 90 73 62z" fill="${col}"/><rect x="97" y="108" width="6" height="56" fill="#d8cfcf"/><ellipse cx="100" cy="168" rx="28" ry="6" fill="#d8cfcf"/></svg>`;
       return `<svg viewBox="0 0 200 200" aria-hidden="true"><ellipse cx="100" cy="178" rx="44" ry="8" fill="rgba(35,31,32,.1)"/><path d="M62 40h76l-8 134H70z" fill="#fff" stroke="#e8e1dc" stroke-width="3"/><path d="M66 70h68l-6 100H72z" fill="${col}"/>
-        <circle cx="86" cy="98" r="4" fill="rgba(255,255,255,.5)"/><circle cx="110" cy="122" r="3" fill="rgba(255,255,255,.45)"/><rect x="62" y="34" width="76" height="10" rx="4" fill="#c4122f"/><rect x="104" y="12" width="5" height="34" rx="2" fill="#231f20" transform="rotate(12 106 30)"/></svg>`;
+        <circle cx="86" cy="98" r="4" fill="rgba(255,255,255,.5)"/><circle cx="110" cy="122" r="3" fill="rgba(255,255,255,.45)"/><rect x="62" y="34" width="76" height="10" rx="4" fill="#a61932"/><rect x="104" y="12" width="5" height="34" rx="2" fill="#231f20" transform="rotate(12 106 30)"/></svg>`;
     }
     if (p.cat === 'desserts') {
       if (p.id === 'x-cakepop') { const f = cfg || p.recipe; const c1 = (M.CAKEPOPS[f.f1] || {}).color || '#f6a5c0', c2 = (M.CAKEPOPS[f.f2] || {}).color || '#d9822b';
@@ -179,7 +179,7 @@
     }
     if (p.cat === 'extras') {
       if (p.id === 'e-cutlery') return `<svg viewBox="0 0 200 200" aria-hidden="true"><rect x="52" y="40" width="96" height="120" rx="8" fill="#fff" stroke="#e8e1dc" stroke-width="3"/><path d="M84 60v80M74 60v22a10 10 0 0 0 20 0V60M118 60c10 0 12 20 12 30s-6 10-6 10v40" stroke="#8a8380" stroke-width="5" fill="none" stroke-linecap="round"/></svg>`;
-      if (p.id === 'e-pepper') return `<svg viewBox="0 0 200 200" aria-hidden="true"><rect x="60" y="50" width="80" height="100" rx="8" fill="#fff" stroke="#e8e1dc" stroke-width="3"/>${Array.from({ length: 24 }, (_, i) => `<circle cx="${72 + (i * 29) % 56}" cy="${66 + (i * 17) % 70}" r="2.6" fill="${i % 3 ? '#c4122f' : '#f4c430'}"/>`).join('')}</svg>`;
+      if (p.id === 'e-pepper') return `<svg viewBox="0 0 200 200" aria-hidden="true"><rect x="60" y="50" width="80" height="100" rx="8" fill="#fff" stroke="#e8e1dc" stroke-width="3"/>${Array.from({ length: 24 }, (_, i) => `<circle cx="${72 + (i * 29) % 56}" cy="${66 + (i * 17) % 70}" r="2.6" fill="${i % 3 ? '#a61932' : '#f4c430'}"/>`).join('')}</svg>`;
       return `<svg viewBox="0 0 200 200" aria-hidden="true"><ellipse cx="100" cy="160" rx="50" ry="8" fill="rgba(35,31,32,.1)"/><path d="M58 90h84l-8 60H66z" fill="#fff" stroke="#e8e1dc" stroke-width="3"/><ellipse cx="100" cy="90" rx="42" ry="10" fill="#f7f3e6"/><circle cx="90" cy="88" r="2" fill="#3f8f3a"/><circle cx="108" cy="91" r="2" fill="#3f8f3a"/></svg>`;
     }
     return '';

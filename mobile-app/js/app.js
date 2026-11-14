@@ -72,6 +72,7 @@
     const root = (TAB_ROOTS.includes(a) && !st.groupTarget) || (pinfo && a === 'group');
     const n = M.cartCount(); const { sh } = V.contextSummary();
     const title = a === 'home' ? '' : (a === 'account' ? 'Account' : TITLES[a] || '');
+    if (a === 'login') return `<div class="abar abar-auth"><div class="abar-l"></div><div class="abar-c"><span class="logo" aria-label="MOD Pizza">${logo()}</span></div><div class="abar-r"></div></div>`;
     return `<div class="abar ${a === 'home' ? 'is-home' : ''}">
       <div class="abar-l">${root ? (a === 'home' || pinfo ? `<span class="logo" aria-label="MOD Pizza">${logo()}</span>` : '') : `<button class="abar-back" data-act="nav-back" aria-label="Back">${icon('chevL')}<span class="ios-only">Back</span></button>`}</div>
       <div class="abar-t" aria-hidden="true">${esc(title)}</div>
@@ -80,7 +81,7 @@
   }
   function cartBar(r) {
     const a = r.parts[0] || 'home'; const n = M.cartCount();
-    if (!APPMODE || !n || participantInfo() || ['cart', 'checkout', 'item', 'order'].includes(a)) return '';
+    if (!APPMODE || !n || participantInfo() || ['cart', 'checkout', 'item', 'order', 'login'].includes(a)) return '';
     const q = M.quote();
     return `<a class="cart-bar" href="#/cart"><span class="cb-n">${n}</span><span class="cb-t">View cart</span><span class="cb-p">${money(q.subtotal - q.discount)}</span></a>`;
   }
@@ -88,8 +89,9 @@
     if (APPMODE) return appHeader(r);
     const pinfo = participantInfo();
     if (pinfo) return `<div class="hdr-inner"><a class="logo" href="#/group/${pinfo.g}?p=${pinfo.p}&view=participant" aria-label="MOD group order">${logo()}</a><span class="pill pill-info">${icon('users')}Group participant window</span></div>`;
-    const { sh, store, time } = V.contextSummary();
     const a = r.parts[0] || 'home';
+    if (a === 'login') return `<div class="hdr-inner hdr-auth"><span class="logo" aria-label="MOD Pizza">${logo()}</span></div>`;
+    const { sh, store, time } = V.contextSummary();
     const nav = (href, key, label) => `<a href="${href}" class="${a === key ? 'on' : ''}" ${a === key ? 'aria-current="page"' : ''}>${label}</a>`;
     const n = M.cartCount();
     return `<div class="hdr-inner">
@@ -105,6 +107,7 @@
   function tabs(r) {
     if (participantInfo()) return '';
     const a = r.parts[0] || 'home';
+    if (a === 'login') return '';
     const t = (href, keys, ic, label) => { const on = keys.includes(a); return `<a href="${href}" class="${on ? 'on' : ''}" ${on ? 'aria-current="page"' : ''}>${icon(ic)}<span>${label}</span></a>`; };
     return t('#/', ['home'], 'home', 'Home') + t('#/menu', ['menu', 'item'], 'menu', 'Menu') + t('#/rewards', ['rewards', 'wallet', 'pass', 'activity', 'join'], 'star', 'Rewards') + t('#/orders', ['orders', 'order', 'receipt', 'support'], 'receipt', 'Orders') + t('#/account', ['account', 'addresses', 'favorites', 'groups', 'group', 'offers', 'offer'], 'user', APPMODE ? 'Account' : 'More');
   }
@@ -215,7 +218,7 @@
   }
   function cancelDialog(id) {
     const f = M.findOrder(id); if (!f) return;
-    if (!M.canAmend(f.order)) { U.toast('We’ve started preparing this order — it can’t be canceled. Contact support for help.', 'err'); return; }
+    if (!M.canAmend(f.order)) { U.toast('The store has accepted this order — it can’t be canceled. Contact support for help.', 'err'); return; }
     const reasons = ['Ordered by mistake', 'Need to change items', 'Wrong time or location', 'Taking too long', 'Other'];
     const entry = U.openDialog({ title: 'Cancel this order?', size: 'sm', body: `<p class="small">${esc(f.order.id)} · ${money(f.order.totals.total)}. You’ll get a full refund to your original payment${f.journey === 'member' ? ', and any points, wallet funds or service credit used will be restored' : ''}. This can’t be undone.</p>
       <fieldset class="radio-cards"><legend>Reason</legend>${reasons.map((r, i) => `<label class="rcard"><input type="radio" name="cr" value="${esc(r)}" ${i === 0 ? 'checked' : ''}><span>${esc(r)}</span></label>`).join('')}</fieldset>
@@ -269,8 +272,8 @@
     const doc = new lib({ unit: 'pt', format: 'letter' });
     const W = doc.internal.pageSize.getWidth(); let y = 56; const L = 48, R = W - 48;
     const line = (txt, opts = {}) => { doc.setFont('helvetica', opts.bold ? 'bold' : 'normal'); doc.setFontSize(opts.size || 10); doc.setTextColor(...(opts.color || [35, 31, 32])); const rows = doc.splitTextToSize(String(txt), opts.w || (R - L)); rows.forEach(t => { if (y > 740) { doc.addPage(); y = 56; } doc.text(t, opts.x || L, y, opts.align ? { align: opts.align } : undefined); y += (opts.size || 10) + 4; }); };
-    doc.setFillColor(196, 18, 47); doc.rect(0, 0, W, 8, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(26); doc.setTextColor(196, 18, 47); doc.text('MOD', L, y + 10); doc.setFontSize(12); doc.setTextColor(35, 31, 32); doc.text('pizza', L + 68, y + 10);
+    doc.setFillColor(166, 25, 50); doc.rect(0, 0, W, 8, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(26); doc.setTextColor(166, 25, 50); doc.text('MOD', L, y + 10); doc.setFontSize(12); doc.setTextColor(35, 31, 32); doc.text('pizza', L + 68, y + 10);
     doc.setFontSize(18); doc.text('Invoice', R, y + 10, { align: 'right' }); y += 36;
     const s = M.stageOf(o);
     [['Invoice', o.invoice.id], ['Revision', String(o.invoice.revision)], ['Order', o.id], ['Date', `${M.fmtDate(o.createdAt, o.tz)} ${M.fmtTime(o.createdAt, o.tz)}`], ['Status', s.label]].forEach(([k, v]) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(110); doc.text(k, R - 180, y); doc.setTextColor(35, 31, 32); doc.text(v, R, y, { align: 'right' }); y += 13; });
@@ -358,6 +361,7 @@
     'set-goto': (el) => { M.J().goTo = el.dataset.id; M.commit('journey'); U.toast('Saved as your go-to order — it’s on Home now'); },
     tip: (el) => { const v = el.dataset.tip; M.S.shared.tip = v === 'custom' ? { kind: 'custom', value: 0, custom: M.S.shared.tip.custom || 300 } : { kind: 'pct', value: Number(v), custom: 0 }; M.commit('shared'); },
     'pay-method': (el) => { M.S.shared.pay.method = el.dataset.m; if (el.dataset.m === 'wallet') M.S.shared.pay.useGift = false; M.commit('shared'); },
+    'loyalty-opt': (el) => { M.S.shared.draft[el.dataset.k] = el.checked; M.commit('shared'); },
     'toggle-credit': () => { M.S.shared.pay.useCredit = !M.S.shared.pay.useCredit; M.commit('shared'); },
     'toggle-gift': () => { M.S.shared.pay.useGift = !M.S.shared.pay.useGift; M.commit('shared'); },
     allergen: (el) => {

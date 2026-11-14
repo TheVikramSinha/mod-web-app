@@ -145,7 +145,7 @@
           <span class="eyebrow light">${icon('flame')}Fired in minutes · toppings included</span>
           ${h1('Your pizza.<br><span>Your way.</span>')}
           <p>Pile on what you love, split it down the middle, or grab a go-to in two taps. Every pizza is made on demand.</p>
-          <div class="btn-row"><a class="btn btn-lg btn-white" href="#/menu">Start your order ${icon('chevR')}</a><a class="btn btn-lg btn-glass" href="#/item/p-cyo">Build your own</a></div>
+          <div class="btn-row"><a class="btn btn-lg btn-white" href="#/menu">Start your order ${icon('chevR')}</a><a class="btn btn-lg btn-glass" href="#/item/p-cyo">Build your pizza</a></div>
         </div>
         <div class="hero-art"><div class="hero-plate"><img src="${window.MOD_ASSETS || ''}custom.jpg" alt="A MOD pizza cut into strips, each strip with different toppings" width="800" height="800" decoding="async"></div>
           <div class="made-badge" aria-hidden="true"><span>Made</span><strong>Your</strong><span>Way</span></div></div>
@@ -275,7 +275,8 @@
   function earnLine(q) {
     if (M.isMember()) return `<p class="earn">${icon('star')}<span>You’ll earn about <strong>${q.points.points} pts</strong> once this order is completed${q.points.rule ? ` <small>(${q.points.rule.rate}/$1 × ${q.points.rule.mult} ${esc(q.points.rule.tier)})</small>` : ''}${q.points.capped ? ' <small>· daily cap reached</small>' : ''}</span></p>`;
     const est = Math.floor(Math.floor(q.foodAfter / 100) * M.CONFIG.pointsPerDollar);
-    return `<p class="earn muted">${icon('star')}<span><a href="#/login">Sign in</a> to earn about <strong>${est} pts</strong> on this order.</span></p>`;
+    if (!M.J().enrolled && (M.S.shared.draft || {}).loyaltyOptOut) return `<p class="earn muted">${icon('star')}<span>Not earning points on this order.</span></p>`;
+    return `<p class="earn">${icon('star')}<span>You’ll earn about <strong>${est} pts</strong> with MOD Rewards once this order is completed.</span></p>`;
   }
   V.earnLine = earnLine;
   function discountBlock(q, eligible) {
@@ -359,6 +360,13 @@
             <p class="tiny muted">Percentage tips are calculated on food after discounts, before tax and delivery: ${money(q.foodAfter)}.</p>
           </section>
 
+          ${!j.enrolled ? `<section class="card co-sect co-loyalty" aria-labelledby="co-h-loy"><h2 id="co-h-loy" class="h3">${icon('star')}MOD Rewards</h2>
+            <p class="loy-lead"><strong>You’re in.</strong> This order adds you to MOD Rewards — ${M.CONFIG.pointsPerDollar} pts per $1, and a free pizza at ${M.CONFIG.pizzaRewardCost.toLocaleString()} pts. Your contact details above become your rewards account.</p>
+            <label class="check-row"><input type="checkbox" ${d.loyaltyOptOut ? 'checked' : ''} data-act="loyalty-opt" data-k="loyaltyOptOut"><span>No thanks, I’ll skip my free pizza</span></label>
+            <label class="check-row"><input type="checkbox" ${d.offersOptOut ? 'checked' : ''} data-act="loyalty-opt" data-k="offersOptOut"><span>No thanks, I like paying full price</span></label>
+            <label class="check-row"><input type="checkbox" ${d.textsOptOut ? 'checked' : ''} data-act="loyalty-opt" data-k="textsOptOut"><span>No thanks, I’d rather miss the secret deals</span></label>
+          </section>` : ''}
+
           <section class="card co-sect" aria-labelledby="co-h-pay"><h2 id="co-h-pay" class="h3">${icon('card')}Payment <span class="pill pill-muted">Simulated</span></h2>
             ${member ? `<div class="wallet-tenders">
               <label class="switch-row"><input type="checkbox" ${sh.pay.useCredit ? 'checked' : ''} data-act="toggle-credit" ${j.wallet.credit ? '' : 'disabled'}><span class="switch" aria-hidden="true"></span><span><strong>Use service credit</strong><small>${money(j.wallet.credit)} available · applied first</small></span></label>
@@ -425,20 +433,23 @@
               <div class="eta">${s.id === 'canceled' ? 'Canceled' : esc(M.fmtTime(s.done && o.completedAt ? o.completedAt : eta, o.tz, { date: o.schedule.type === 'later' }))}</div></div>${stageBadge(o)}</div>
             <ol class="tsteps" aria-label="Order progress" style="--n:${s.steps.length}">${steps}</ol>
             ${!s.done && s.id !== 'scheduled' ? '<p class="tiny muted">Demo timeline runs in about 6 minutes. Tracking is simulated — no live GPS or courier connection.</p>' : ''}
-            ${!other && M.canAmend(o) ? `<div class="btn-row"><button class="btn btn-sm btn-outline danger" data-act="cancel-order" data-id="${o.id}">${icon('x')}Cancel order</button><span class="tiny muted">Free to cancel until we start preparing.</span></div>` : ''}
-            ${s.id === 'scheduled' ? `<p class="small">We’ll start preparing ${esc(M.fmtTime(s.start, o.tz, { date: true }))}. You can still change toppings until then.</p>` : ''}
+            ${!other && M.canAmend(o) ? `<div class="btn-row"><button class="btn btn-sm btn-outline danger" data-act="cancel-order" data-id="${o.id}">${icon('x')}Cancel order</button><span class="tiny muted">You can change or cancel until the store accepts your order.</span></div>` : ''}
+            ${s.id === 'scheduled' ? `<p class="small">We’ll start preparing ${esc(M.fmtTime(s.start, o.tz, { date: true }))}. You can change this order until the store accepts it.</p>` : ''}
+            ${!other && !o.canceled && !s.done && !M.canAmend(o) && s.id !== 'scheduled' ? `<p class="tiny muted">${icon('lock')}Order accepted — changes and cancellation are now closed. Need help? Use Get help.</p>` : ''}
           </section>
           ${o.mode === 'delivery' ? mapCard(o, s) : `<section class="card pickup-card"><h2 class="h3">${icon(o.pickupMethod === 'drivethru' ? 'clock' : o.pickupMethod === 'curbside' ? 'truck' : 'store')}${esc(methodOf(o))} at ${esc(o.storeName)}</h2><p>${esc(o.storeAddress)}</p>
             ${o.vehicle ? `<p class="small"><strong>Vehicle:</strong> ${esc(o.vehicle)}</p>` : ''}
             <div class="pickup-note">${icon('info')}<span>${esc(o.pickupMethod && o.pickupMethod !== 'instore' ? pickupNote(null, o.pickupMethod) : o.pickupNote)}</span></div>
             ${o.pickupMethod === 'curbside' && !o.canceled && !s.done && !other ? (o.arrived ? `<p class="elig ok">${icon('check')}Team notified at ${esc(M.fmtTime(o.arrived, o.tz))} — we’re bringing it out.</p>` : `<div class="btn-row"><button class="btn btn-primary" data-act="im-here" data-id="${o.id}">${icon('pin')}I’m here</button><span class="tiny muted">Tap when you’re parked.</span></div>`) : ''}</section>`}
-          ${amend ? `<section class="card amend-card"><div><h2 class="h3">${icon('edit')}Change toppings</h2><p class="small muted">You can tweak toppings and portions until we start preparing. Size, crust and price stay the same.</p></div><button class="btn btn-primary" data-act="amend-open" data-id="${o.id}">Edit toppings</button></section>` : ''}
+          ${amend ? `<section class="card amend-card"><div><h2 class="h3">${icon('edit')}Change toppings</h2><p class="small muted">You can tweak toppings and portions until the store accepts your order. Size, crust and price stay the same.</p></div><button class="btn btn-primary" data-act="amend-open" data-id="${o.id}">Edit toppings</button></section>` : ''}
           ${o.amendments.length ? `<section class="card"><h2 class="h3">Changes made</h2><ul class="amend-list">${o.amendments.map(a => `<li><strong>${esc(a.line)}</strong> · ${esc(M.fmtTime(a.at, o.tz))}<br><span class="muted">Before:</span> ${esc(a.before)}<br><span class="muted">After:</span> ${esc(a.after)} · ${money(a.charge)}</li>`).join('')}</ul></section>` : ''}
         </div>
         <aside class="co-side">
           <section class="card"><h2 class="h3">Your order</h2>
             <ul class="mini-lines">${o.lines.map(l => `<li><span class="q">${l.qty}×</span><span>${esc(l.name)}${l.participant ? ` <small>· ${esc(l.participant)}</small>` : ''}${l.desc.length ? `<small>${esc(l.desc.join(' · '))}</small>` : ''}${l.note ? `<small>Note: ${esc(l.note)}</small>` : ''}</span><span>${money(l.total)}</span></li>`).join('')}</ul>
             <div class="totals">${totalsRows(o.totals, { mode: o.mode })}</div>
+            ${o.loyalty && o.loyalty.joined && !o.canceled ? `<p class="earn ${o.loyalty.enrolled ? '' : 'muted'}">${icon('star')}<span>${o.loyalty.enrolled ? `You’re enrolled in MOD Rewards${o.journey === 'guest' ? ` as ${esc(o.contact.email)}` : ''}.${!o.loyalty.offers && !o.loyalty.texts ? ' No promo emails or texts.' : !o.loyalty.offers ? ' No promo emails.' : !o.loyalty.texts ? ' No promo texts.' : ''}` : 'You skipped your free pizza this time — it’ll be waiting when you’re ready.'}</span></p>` : ''}
+            ${o.journey === 'guest' && o.loyalty && o.loyalty.enrolled && !o.canceled ? `<p class="earn">${icon('star')}<span>${o.pointsAwarded ? `<strong>${o.pointsEarned || 0} pts</strong> earned` : `<strong>${o.pointsEstimate || 0} pts</strong> will be added when this order is completed`}</span></p>` : ''}
             ${o.journey === 'member' && !o.canceled ? `<p class="earn">${icon('star')}<span>${o.pointsAwarded ? `<strong>${o.pointsEarned} pts</strong> earned` : `<strong>${o.pointsEstimate} pts</strong> will be added when this order is completed`}</span></p>` : ''}
             <div class="btn-row"><a class="btn btn-sm btn-outline" href="#/receipt/${o.id}">${icon('receipt')}Receipt</a><a class="btn btn-sm btn-ghost" href="#/support/${o.id}">${icon('help')}Get help</a>${s.done && !o.canceled ? `<a class="btn btn-sm btn-ghost" href="#/support/${o.id}#feedback">${icon('star')}${o.feedback ? 'Edit rating' : 'Rate order'}</a>` : ''}</div>
           </section>

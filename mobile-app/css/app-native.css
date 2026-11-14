@@ -44,7 +44,7 @@ html.app.p-android .tabbar a .ico { padding: 3px 18px; width: 58px; height: 30px
 html.app.p-android .tabbar a.on .ico { background: var(--red-50); }
 html.app.p-android .tabbar a.on { color: var(--red-dark); }
 #cartbar { position: fixed; left: 0; right: 0; bottom: calc(var(--tab) + var(--sab) + 8px); z-index: 59; max-width: 560px; margin: 0 auto; padding: 0 12px; pointer-events: none; }
-.cart-bar { pointer-events: auto; display: flex; align-items: center; gap: 12px; background: var(--red); color: #fff; text-decoration: none; border-radius: 16px; padding: 12px 16px; font-weight: 700; box-shadow: 0 12px 24px -10px rgba(139, 15, 5, .7); animation: barIn .3s var(--ease); }
+.cart-bar { pointer-events: auto; display: flex; align-items: center; gap: 12px; background: var(--red); color: #fff; text-decoration: none; border-radius: 16px; padding: 12px 16px; font-weight: 700; box-shadow: 0 12px 24px -10px rgba(125, 18, 38, .7); animation: barIn .3s var(--ease); }
 .cart-bar:hover, .cart-bar:active { color: #fff; background: var(--red-dark); }
 .cb-n { min-width: 28px; height: 28px; border-radius: 9px; background: rgba(255, 255, 255, .2); display: grid; place-items: center; font-size: 14px; }
 .cb-t { flex: 1; } .cb-p { font-family: var(--display); font-size: 17px; }
@@ -95,7 +95,7 @@ html.app .dlg-wrap.in .dlg { transform: none; }
 .ob-top { display: flex; justify-content: space-between; align-items: center; min-height: 44px; }
 .ob-skip { border: 0; background: none; font-weight: 650; color: var(--muted); padding: 10px; }
 .ob-art { flex: 1; display: grid; place-items: center; padding: 10px 0; min-height: 240px; }
-.ob-photo { position: relative; width: min(290px, 78vw); aspect-ratio: 1; border-radius: 50%; background: #f3e7d7; box-shadow: 0 0 0 18px #f3e7d7, 0 30px 60px -20px rgba(139, 15, 5, .45); }
+.ob-photo { position: relative; width: min(290px, 78vw); aspect-ratio: 1; border-radius: 50%; background: #f3e8d7; box-shadow: 0 0 0 18px #f3e8d7, 0 30px 60px -20px rgba(125, 18, 38, .45); }
 .ob-photo img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .made-badge.sm { position: absolute; left: auto; right: -12px; bottom: -6px; top: auto; width: 88px; height: 88px; }
 .made-badge.sm strong { font-size: 24px; } .made-badge.sm span { font-size: 10.5px; }
@@ -131,3 +131,7 @@ html.app #toast-root { width: calc(100% - 24px); }
 .sp-mark { background: #fff; padding: 18px; border-radius: 28px; } .sp-mark .logo-img, .sp-mark .logo-svg { width: 96px; }
 .abar .logo-img, .abar .logo-svg { width: 36px; } .abar .logo-text { display: none; }
 .ob-top .logo-img, .ob-top .logo-svg { width: 40px; }
+
+/* Login: distraction-free (no back, profile, cart or tab bar) */
+html.app body[data-route="login"] main { padding: 0 0 calc(24px + var(--sab, 0px)); min-height: calc(100vh - var(--hdr)); }
+html.app body[data-route="login"] .app-header { background: var(--crust); }
