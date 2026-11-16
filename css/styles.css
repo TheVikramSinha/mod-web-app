@@ -981,11 +981,10 @@ body[data-route="login"] main { padding-top: 8px; }
    Logo: single-colour shield, no typed name beside it; reversed (white) on dark/burgundy grounds; ™ always present.
    Colour: brighter palette — burgundy replaces legacy dark/ink surfaces; Roma Red only alongside burgundy;
    Crust as supporting background; Sky Blue / Ice Cold Aqua / Olive Oil Green as accents only (non-pizza items, info states).
-   Identity: burgundy + crust wave pattern on hero brand moments. */
+*/
 :root {
   --info: #1d6b7a; --info-bg: #e3f4f7; --ok: #3f5600; --ok-bg: #f1f6c8; --veg: #5d7a00; --vegan: #4a6200;
   --gold: #a61932;
-  --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40' viewBox='0 0 120 40'%3E%3Cpath d='M0 20 C20 0 40 0 60 20 S100 40 120 20' fill='none' stroke='%23f3e8d7' stroke-width='9' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 /* logo */
 .logo-svg { width: 44px; height: auto; display: block; flex: none; overflow: visible; }
@@ -1007,8 +1006,8 @@ body[data-route="login"] main { padding-top: 8px; }
 /* secondary accents for non-pizza products */
 .cat-tile[href*="cat=salads"] .cat-art { background: #f4f8d6; }
 .cat-tile[href*="cat=desserts"] .cat-art, .cat-tile[href*="cat=beverages"] .cat-art { background: var(--aqua); }
-/* login art panel: brand wave pattern */
-.auth, .auth-art { background-image: var(--wave), linear-gradient(155deg, var(--red) 0%, var(--red-dark) 80%); background-size: 120px 40px, auto; background-blend-mode: soft-light, normal; }
+/* login art panel */
+.auth, .auth-art { background-image: linear-gradient(155deg, var(--red) 0%, var(--red-dark) 80%); }
 @media (max-width: 860px) { .auth { background: none; } }
 /* caps buttons are wider — let hero CTAs wrap on small screens */
 .hero-copy { min-width: 0; } .hero .btn-row { flex-wrap: wrap; }
@@ -1017,7 +1016,6 @@ body[data-route="login"] main { padding-top: 8px; }
 
 /* ================= UI fixes · round 3 ================= */
 /* 1. Cards — one consistent system. Rewards-family cards all follow the reference rewards card. */
-.card { border-radius: var(--radius); border: 1px solid var(--line); box-shadow: var(--shadow-sm); padding: 20px; }
 .rewards-card, .points-hero, .prof-hero, .pass {
   background: linear-gradient(140deg, var(--ink) 0%, #3a2a2c 60%, var(--red-dark) 140%);
   color: #fff; border-radius: var(--radius-lg); position: relative; overflow: hidden; isolation: isolate; box-shadow: var(--shadow); }
