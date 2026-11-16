@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reset MOD prototype</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:24px;min-height:100vh;display:grid;place-items:center;background:#f7f5f2;color:#262220;font:16px/1.6 Arial,sans-serif}main{width:100%;max-width:480px;background:white;border:1px solid #e7e1dc;border-radius:20px;padding:32px}h1{line-height:1.2}button,a{display:block;border:0;border-radius:10px;padding:14px 18px;text-align:center;font:700 16px Arial,sans-serif}button{background:#c4122f;color:white;width:100%;cursor:pointer}button:disabled{opacity:.5}a{color:#8b0f05;margin-top:12px}small{display:block;color:#645b56;margin:16px 0}#status{color:#8b0f05}
+</style>
+</head>
+<body><main>
+<h1>Fresh start.</h1>
+<p>Clear your test orders, bag, coupons, membership, wallet changes and admin edits. The prototype will reload with its original sample data.</p>
+<small>Close other prototype tabs first so they cannot save old data again. This resets only this prototype in this browser and site address.</small>
+<button id="reset" type="button">Reset data & open prototype</button>
+<a id="back" href="./index.html#home">Back without resetting</a>
+<p id="status" role="status" aria-live="polite"></p>
+</main>
+<script>
+const button=document.getElementById('reset'),status=document.getElementById('status');
+if(location.protocol==='file:'){
+ button.disabled=true;
+ status.textContent='Open this page from the same server address you use for the prototype. For the default local server, use the link below.';
+ const link=document.createElement('a');link.href='http://127.0.0.1:4173/reset.html';link.textContent='Open local reset page';status.after(link);
+ document.getElementById('back').href='http://127.0.0.1:4173/#home';
+}
+button.addEventListener('click',()=>{
+ try{
+  localStorage.removeItem('mod-pizza-prototype-v1');
+  sessionStorage.removeItem('mod-operations-filters');
+  button.disabled=true;status.textContent='Cleared. Opening a fresh prototype…';
+  location.replace('./index.html#home');
+ }catch(error){status.textContent='Browser storage is blocked. Allow site storage, then try again.';}
+});
+</script>
+</body></html>
